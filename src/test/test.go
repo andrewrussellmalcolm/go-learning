@@ -1,24 +1,63 @@
 package main
 
 import (
-	"fmt"
-	"unsafe"
+	/*
+		        #include <stdio.h>
+		        #include <stdlib.h>
+				 #include "pcap.h"
+				#cgo LDFLAGS: /usr/lib/x86_64-linux-gnu/libpcap.so
+	*/
+	"C"
 )
-
-// Test :
-type Test struct {
-	header [10]byte
-	data   [256]byte
-}
+import (
+	"fmt"
+	"log"
+)
 
 func main() {
 
-	test := Test{}
+	type PcapIf *C.struct_pcap_if
+	type PcapPktHdr *C.struct_pcap_pkthdr
 
-	copy(test.header[:], []byte("1234567890"))
-	fmt.Printf("size of test %d\n", unsafe.Sizeof(test))
+	var devlist PcapIf
+	var lanDev PcapIf
 
-	p := []byte(unsafe.Pointer(&test))
+	res := C.pcap_findalldevs(&devlist, nil)
 
-	fmt.Println(p)
+	if res != 0 {
+		log.Fatalf("pcap_findalldevs returned %d", res)
+	}
+
+	for dev := devlist; dev != nil; dev = dev.next {
+
+		name := C.GoString(dev.name)
+
+		if name == "enp5s0" {
+			lanDev = dev
+			break
+		}
+	}
+
+	fmt.Printf("%s\n", C.GoString(lanDev.name))
+
+	var err string
+
+	handle := C.pcap_open_live(lanDev.name, 1000, 1, 1000, C.CString(err))
+
+	if handle == nil {
+		log.Fatalf("pcap_open_live returned %s", err)
+	}
+
+	pktHdr := new(C.struct_pcap_pkthdr)
+
+	pktBuf := C.malloc(10000)
+
+	for {
+
+		C.pcap_next_ex(handle, &pktHdr, pktBuf)
+
+		fmt.Printf("len=%d\n", pktHdr.len)
+	}
+
+	C.pcap_close(handle)
 }
