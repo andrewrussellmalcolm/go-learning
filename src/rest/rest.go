@@ -1,9 +1,14 @@
+//
+// see: https://gist.github.com/denji/12b3a568f092ab951456 for ssl key generation
+//
 package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -105,18 +110,41 @@ func updateWidget(w http.ResponseWriter, r *http.Request) {
 
 /** */
 func checkAuth(user, pass string, r *http.Request) bool {
-	return checkAuthDB(user, pass)
+	if checkAuthDB(user, pass) {
+		return true
+	}
+
+	log.Printf("Attempted access by %s failed\n", user)
+	return false
+}
+
+/** */
+func initLogging() *os.File {
+
+	f, err := os.OpenFile("logfile", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		panic(fmt.Sprintf("error opening file: %v\n", err))
+	}
+
+	log.SetOutput(f)
+	return f
 }
 
 /**  */
 func main() {
 
-	initDB("", "", "")
+	// read the configuration
+	config := readConfig()
+
+	// start logging
+	logfile := initLogging()
+	defer logfile.Close()
+
+	// start the database
+	initDB(config.Database.DBName, config.Database.Username, config.Database.Password)
 	defer closeDB()
 
-	certPath := "server.pem"
-	keyPath := "server.key"
-
+	// start the router
 	router := mux.NewRouter()
 
 	router.HandleFunc("/widgets", getWidgets).Methods("GET")
@@ -126,5 +154,5 @@ func main() {
 	router.HandleFunc("/widget/{id}", deleteWidget).Methods("DELETE")
 
 	router.Use(httpauth.BasicAuth(httpauth.AuthOptions{AuthFunc: checkAuth}))
-	log.Fatal(http.ListenAndServeTLS(":8080", certPath, keyPath, router))
+	log.Fatal(http.ListenAndServeTLS(config.Server.Port, config.Server.CertPath, config.Server.KeyPath, router))
 }

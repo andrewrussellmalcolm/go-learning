@@ -17,10 +17,9 @@ type Widget struct {
 }
 
 /** */
-func initDB(user, password, dbname string) {
+func initDB(dbname, username, password string) {
 
-	conn, err := sql.Open("mysql", "root:root@/test")
-
+	conn, err := sql.Open("mysql", username+":"+password+"@/"+dbname)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -119,7 +118,7 @@ func deleteDBWidget(id int) error {
 		log.Fatal(err)
 	}
 
-	_, err = stmt.Exec()
+	_, err = stmt.Exec(id)
 
 	return err
 }
