@@ -6,17 +6,17 @@ import (
 )
 
 // TestMain :
-// func TestMain(m *testing.M) {
-
-// }
+func TestMain(m *testing.M) {
+	initDB()
+	m.Run()
+	closeDB()
+}
 
 // TestInsert :
 func TestInsert(t *testing.T) {
 
 	fmt.Println("TestInsert")
 
-	initDB()
-	defer closeDB()
 	deleteAllMessagesDB()
 
 	messages := queryAllMessagesDB()
@@ -39,8 +39,6 @@ func TestDelete(t *testing.T) {
 
 	fmt.Println("TestDelete")
 
-	initDB()
-	defer closeDB()
 	deleteAllMessagesDB()
 
 	messages := queryAllMessagesDB()
