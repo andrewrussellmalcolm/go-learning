@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	_ "github.com/go-sql-driver/mysql"
-
+	"github.com/goji/httpauth"
 	"github.com/gorilla/mux"
 )
 
@@ -103,19 +103,28 @@ func updateWidget(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+/** */
+func checkAuth(user, pass string, r *http.Request) bool {
+	return checkAuthDB(user, pass)
+}
+
 /**  */
 func main() {
 
 	initDB("", "", "")
 	defer closeDB()
 
-	r := mux.NewRouter()
+	certPath := "server.pem"
+	keyPath := "server.key"
 
-	r.HandleFunc("/widgets", getWidgets).Methods("GET")
-	r.HandleFunc("/widgets", addWidget).Methods("POST")
-	r.HandleFunc("/widget/{id}", getWidget).Methods("GET")
-	r.HandleFunc("/widget/{id}", updateWidget).Methods("PUT")
-	r.HandleFunc("/widget/{id}", deleteWidget).Methods("DELETE")
+	router := mux.NewRouter()
 
-	log.Fatal(http.ListenAndServe(":8080", r))
+	router.HandleFunc("/widgets", getWidgets).Methods("GET")
+	router.HandleFunc("/widgets", addWidget).Methods("POST")
+	router.HandleFunc("/widget/{id}", getWidget).Methods("GET")
+	router.HandleFunc("/widget/{id}", updateWidget).Methods("PUT")
+	router.HandleFunc("/widget/{id}", deleteWidget).Methods("DELETE")
+
+	router.Use(httpauth.BasicAuth(httpauth.AuthOptions{AuthFunc: checkAuth}))
+	log.Fatal(http.ListenAndServeTLS(":8080", certPath, keyPath, router))
 }

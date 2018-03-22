@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/sha256"
 	"database/sql"
+	"encoding/base64"
 	"log"
 )
 
@@ -97,10 +99,6 @@ func getDBWidget(id int) (Widget, error) {
 
 	row := stmt.QueryRow(id)
 
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	widget := Widget{}
 
 	err = row.Scan(&widget.ID, &widget.Name, &widget.Color)
@@ -124,4 +122,27 @@ func deleteDBWidget(id int) error {
 	_, err = stmt.Exec()
 
 	return err
+}
+
+/** */
+func checkAuthDB(name, pass string) bool {
+
+	stmt, err := connection.Prepare("select name from user where name=? and pass=?")
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	row := stmt.QueryRow(name, hashPassword(pass))
+
+	err = row.Scan(&name, &pass)
+
+	return err != sql.ErrNoRows
+}
+
+/** */
+func hashPassword(password string) string {
+	hasher := sha256.New()
+	hasher.Write([]byte(password))
+	return base64.URLEncoding.EncodeToString(hasher.Sum(nil))
 }
