@@ -13,12 +13,12 @@ type Config struct {
 		DBName   string `json:"db_name,omitempty"`
 		Username string `json:"username,omitempty"`
 		Password string `json:"password,omitempty"`
-	}
+	} `json:"database,omitempty"`
 	Server struct {
-		CertPath string
-		KeyPath  string
-		Port     string
-	}
+		CertPath string `json:"cert_path,omitempty"`
+		KeyPath  string `json:"key_path,omitempty"`
+		Port     string `json:"port,omitempty"`
+	} `json:"server,omitempty"`
 }
 
 func readConfig() Config {
