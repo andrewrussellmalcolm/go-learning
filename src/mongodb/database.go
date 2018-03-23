@@ -9,9 +9,10 @@ import (
 
 // Message :
 type Message struct {
-	ID        bson.ObjectId `bson:"_id,omitempty"`
-	Text      string
-	Timestamp time.Time
+	ID        bson.ObjectId `bson:"_id,omitempty" json:"id,omitempty"`
+	Text      string        `json:"text,omitempty"`
+	Payload   interface{}   `bson:"payload,omitempty"`
+	Timestamp time.Time     `json:"timestamp,omitempty"`
 }
 
 var session *mgo.Session
