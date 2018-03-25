@@ -26,7 +26,14 @@ func main() {
 
 	client := &Client{conn: conn}
 
-	fmt.Println(client.Reverse("Hello, world"))
-	fmt.Println(client.ToUpper("Hello, world"))
-	fmt.Println(client.ToLower("Hello, world"))
+	for i := 0; ; i++ {
+
+		client.Reverse("Hello, world")
+		client.ToUpper("Hello, world")
+		client.ToLower("Hello, world")
+
+		if i%1000 == 0 {
+			fmt.Print(".")
+		}
+	}
 }

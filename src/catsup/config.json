@@ -1,0 +1,12 @@
+{
+    "database":
+    {
+        "db_name": "localhost:27017"
+    },
+    "server":
+    {
+        "cert_path" : "server.pem",
+        "key_path" : "server.key",        
+        "port" : ":8080"
+    }
+}
