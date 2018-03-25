@@ -2,8 +2,23 @@ package main
 
 import (
 	"fmt"
-	"time"
 )
+
+type Payload1 struct {
+	X float64 `json:"x,omitempty"`
+	Y float64 `json:"y,omitempty"`
+	Z float64 `json:"z,omitempty"`
+}
+
+type Payload2 struct {
+	X     float64 `json:"x,omitempty"`
+	Y     float64 `json:"y,omitempty"`
+	Theta float64 `json:"theta,omitempty"`
+}
+
+type Payload3 struct {
+	Data string `json:"data,omitempty"`
+}
 
 func main() {
 
@@ -12,31 +27,30 @@ func main() {
 
 	deleteAllMessagesDB()
 
-	insertMessageDB(Message{Text: "Hello"})
+	payload1 := Payload1{1, 2, 3}
+	payload2 := Payload2{4, 5, 6}
+	payload3 := Payload3{"hippity hoppity hip"}
+
+	insertMessageDB(Message{Text: "Payload 1", Payload: payload1})
+	insertMessageDB(Message{Text: "Payload 2", Payload: payload2})
+	insertMessageDB(Message{Text: "Payload 3", Payload: payload3})
 	messages := queryAllMessagesDB()
-	fmt.Println("== should be one message")
-	fmt.Println(messages)
 
-	deleteAllMessagesDB()
-	insertMessageDB(Message{Text: "Hello"})
-	insertMessageDB(Message{Text: "World"})
-	messages = queryAllMessagesDB()
-	fmt.Println("== should be two messages")
-	fmt.Println(messages)
+	for _, message := range messages {
+		fmt.Println(message)
 
-	deleteAllMessagesDB()
-	messages = queryAllMessagesDB()
-	fmt.Println("== should be no messages")
-	fmt.Println(messages)
+		switch t := message.Payload.(type) {
 
-	insertMessageDB(Message{Text: "Hello"})
-	messages = queryAllMessagesDB()
-	fmt.Println("== should be 1 message 'hello'")
-	fmt.Println(messages)
-	time.Sleep(2 * time.Second)
-	messages[0].Text = "World"
-	updateMessageDB(messages[0])
-	messages = queryAllMessagesDB()
-	fmt.Println("== should be 1 message 'world'")
-	fmt.Println(messages)
+		case Payload1:
+			fmt.Println("P1")
+		case Payload2:
+			fmt.Println("P2")
+		case Payload3:
+			fmt.Println("P3")
+		default:
+			fmt.Println(t)
+		}
+
+	}
+
 }
