@@ -73,60 +73,60 @@ func main() {
 		fmt.Printf("Enter an option\n")
 		fmt.Printf("u = list users\n")
 		fmt.Printf("m = list messages\n")
-		fmt.Printf("s = send message\n")
+		fmt.Printf("s = send message (e.g. s 1 this is my message)\n")
 		fmt.Printf("q = quit\n")
 		fmt.Printf("===================================================\n")
 		fmt.Print(">")
 		line, _ := reader.ReadString('\n')
 
-		var cmd rune
-		_, err := fmt.Sscanf(line, "%c", &cmd)
+		words := strings.Split(strings.TrimSpace(line), " ")
 
-		if err == nil {
-			switch cmd {
+		if len(words) > 0 {
+			switch words[0] {
 
-			case 'q':
+			case "q":
 				os.Exit(0)
 
-			case 'u':
+			case "u":
 				users = listUsers(name, pass)
 				for n, user := range users {
 					fmt.Println(n+1, user.Name, user.Email)
 				}
 
-			case 'm':
+			case "m":
 				messages = listMessages(name, pass)
 
 				for n, message := range messages {
 					fmt.Println(n+1, message.Timestamp.Format("3:04PM"), ": ", message.Text)
 				}
 
-			case 's':
+			case "s":
 
-				var userIndex string
-				_, err = fmt.Sscanf(line, "%c %s", &cmd, &userIndex)
+				if len(words) > 1 {
 
-				if err != nil {
-					fmt.Println("Not enough data")
-					panic(err)
+					fmt.Println(words[1])
+
+					index, err := strconv.Atoi(words[1])
+					index--
+
+					if err != nil {
+						fmt.Println("user number must be an integer")
+						break
+					}
+
+					if index < 0 || index >= len(users) {
+						fmt.Println("user number out of range")
+						break
+
+					}
+					userID := users[index].ID.Hex()
+
+					fmt.Println("message>", words[3:])
+					sendMessage(userID, name, pass, "message")
+				} else {
+					fmt.Println("no message supplied")
 				}
-
-				offset := strings.LastIndex(line, userIndex) + len(userIndex)
-				fmt.Println(cmd, userIndex, line[offset:])
-
-				index, err := strconv.Atoi(userIndex)
-
-				if err != nil {
-					fmt.Println("user number must be an integer")
-					panic(err)
-				}
-
-				userID := users[index-1].ID.Hex()
-
-				sendMessage(userID, name, pass, line[offset:])
 			}
-		} else {
-			panic(err)
 		}
 	}
 }
