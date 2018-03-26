@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
@@ -45,6 +47,9 @@ type User struct {
 	Hash  string
 }
 
+// BASE_URL :
+const BASE_URL = "https://localhost:8443/catsup/"
+
 func main() {
 	if len(os.Args) != 3 {
 
@@ -60,19 +65,22 @@ func main() {
 
 	reader := bufio.NewReader(os.Stdin)
 
+	var users []User
+	var messages []Message
+
 	for true {
 		fmt.Printf("===================================================\n")
 		fmt.Printf("Enter an option\n")
 		fmt.Printf("u = list users\n")
-		fmt.Printf("l = list messages\n")
+		fmt.Printf("m = list messages\n")
 		fmt.Printf("s = send message\n")
 		fmt.Printf("q = quit\n")
 		fmt.Printf("===================================================\n")
 		fmt.Print(">")
-		text, _ := reader.ReadString('\n')
+		line, _ := reader.ReadString('\n')
 
 		var cmd rune
-		_, err := fmt.Sscanf(text, "%c", &cmd)
+		_, err := fmt.Sscanf(line, "%c", &cmd)
 
 		if err == nil {
 			switch cmd {
@@ -81,33 +89,51 @@ func main() {
 				os.Exit(0)
 
 			case 'u':
-				listUsers(name, pass)
+				users = listUsers(name, pass)
+				for n, user := range users {
+					fmt.Println(n+1, user.Name, user.Email)
+				}
 
-			case 'l':
-				listMessages(name, pass)
+			case 'm':
+				messages = listMessages(name, pass)
+
+				for n, message := range messages {
+					fmt.Println(n+1, message.Timestamp.Format("3:04PM"), ": ", message.Text)
+				}
 
 			case 's':
 
-				var user, text string
-				_, err = fmt.Sscanf(text, "%c %s %20[^\t\n]", &cmd, &user, &text)
+				var userIndex string
+				_, err = fmt.Sscanf(line, "%c %s", &cmd, &userIndex)
 
-				if err == nil {
-					sendMessage(user, name, pass, text)
-				} else {
+				if err != nil {
 					fmt.Println("Not enough data")
+					panic(err)
 				}
 
+				offset := strings.LastIndex(line, userIndex) + len(userIndex)
+				fmt.Println(cmd, userIndex, line[offset:])
+
+				index, err := strconv.Atoi(userIndex)
+
+				if err != nil {
+					fmt.Println("user number must be an integer")
+					panic(err)
+				}
+
+				userID := users[index-1].ID.Hex()
+
+				sendMessage(userID, name, pass, line[offset:])
 			}
 		} else {
 			panic(err)
 		}
 	}
-
 }
 
 // sendMessage
-func sendMessage(user, name, pass, text string) {
-	fmt.Println(user, text)
+func sendMessage(userID, name, pass, text string) {
+	fmt.Printf("sending %s to %s\n", text, userID)
 
 	httpClient := &http.Client{
 		Transport: &http.Transport{
@@ -118,12 +144,13 @@ func sendMessage(user, name, pass, text string) {
 	}
 
 	// send to andrew
-	url := "https://localhost:8080/catsup/sendmessage/5ab5ff1e89aba31d84acc2c4"
+	url := BASE_URL + "sendmessage/" + userID
 
 	message := Message{}
 	message.Text = text
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(message))
+	val, _ := json.Marshal(message)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(val))
 	if err != nil {
 		panic(err)
 	}
@@ -132,23 +159,14 @@ func sendMessage(user, name, pass, text string) {
 
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := httpClient.Do(req)
+	_, err = httpClient.Do(req)
 	if err != nil {
 		panic(err)
 	}
-
-	defer resp.Body.Close()
-	var messages []Message
-	err = json.NewDecoder(resp.Body).Decode(&messages)
-
-	if err != nil {
-		panic(err)
-	}
-
 }
 
 // listMessages
-func listMessages(name, pass string) {
+func listMessages(name, pass string) []Message {
 
 	httpClient := &http.Client{
 		Transport: &http.Transport{
@@ -157,7 +175,9 @@ func listMessages(name, pass string) {
 			},
 		},
 	}
-	url := "https://localhost:8080/catsup/getmessagelist/5ab5ff1e89aba31d84acc2c4"
+	url := BASE_URL + "getmessagelist/5ab8a3387ebb035f8933ef6d"
+
+	fmt.Println(url)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -181,14 +201,11 @@ func listMessages(name, pass string) {
 		panic(err)
 	}
 
-	for _, message := range messages {
-		fmt.Println(message.Timestamp.Format("3:04PM"), ": ", message.Text)
-	}
-
+	return messages
 }
 
 // listUsers
-func listUsers(name, pass string) {
+func listUsers(name, pass string) []User {
 
 	//	httpClient := http.DefaultClient
 
@@ -199,7 +216,8 @@ func listUsers(name, pass string) {
 			},
 		},
 	}
-	url := "https://localhost:8080/catsup/getuserlist"
+
+	url := BASE_URL + "getuserlist"
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -223,7 +241,5 @@ func listUsers(name, pass string) {
 		panic(err)
 	}
 
-	for _, user := range users {
-		fmt.Println(user.Name, user.Email)
-	}
+	return users
 }

@@ -13,9 +13,10 @@ type Config struct {
 		DBName string `json:"db_name,omitempty"`
 	} `json:"database,omitempty"`
 	Server struct {
-		CertPath string `json:"cert_path,omitempty"`
-		KeyPath  string `json:"key_path,omitempty"`
-		Port     string `json:"port,omitempty"`
+		CertPath  string `json:"cert_path,omitempty"`
+		KeyPath   string `json:"key_path,omitempty"`
+		CookieKey string `json:"cookie_key,omitempty"`
+		Port      string `json:"port,omitempty"`
 	} `json:"server,omitempty"`
 }
 

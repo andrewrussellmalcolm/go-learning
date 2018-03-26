@@ -9,10 +9,10 @@ import (
 
 // User :
 type User struct {
-	ID    bson.ObjectId `bson:"_id,omitempty"`
-	Name  string
-	Email string
-	Hash  string
+	ID    bson.ObjectId `bson:"_id,omitempty" json:"id,omitempty"`
+	Name  string        `json:"name,omitempty"`
+	Email string        `json:"email,omitempty"`
+	Hash  string        `json:"hash,omitempty"`
 }
 
 // CheckAuth :
@@ -65,4 +65,16 @@ func GetUserList() []User {
 	}
 
 	return users
+}
+
+// CreateUser :
+func CreateUser(name, email, pass string) bool {
+
+	user := User{Name: name, Email: email, Hash: hashPassword(pass)}
+
+	c := session.DB("test").C("users")
+
+	err := c.Insert(user)
+
+	return err == nil
 }

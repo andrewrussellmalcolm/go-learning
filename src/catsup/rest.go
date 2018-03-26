@@ -19,11 +19,7 @@ import (
 	"github.com/gorilla/sessions"
 )
 
-var (
-	// key must be 16, 24 or 32 bytes long (AES-128, AES-192 or AES-256)
-	key   = []byte("759CFD5FE3295E8FF47E9CAE42CC1F62")
-	store = sessions.NewCookieStore(key)
-)
+var store *sessions.CookieStore
 
 /**  */
 func setJSONContentType(w http.ResponseWriter) {
@@ -144,8 +140,14 @@ func main() {
 	defer logfile.Close()
 
 	// start the database
-	database.Init(config.Database.DBName)
+	err := database.Init(config.Database.DBName)
+	if err != nil {
+		panic(err)
+	}
 	defer database.Close()
+
+	// inittialise the cookie store
+	store = sessions.NewCookieStore([]byte(config.Server.CookieKey))
 
 	// start the router
 	router := mux.NewRouter()
