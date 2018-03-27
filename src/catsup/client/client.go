@@ -3,53 +3,26 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"catsup/shared"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
-	"time"
+	"syscall"
 
 	"github.com/globalsign/mgo/bson"
 )
 
-// Status :
-type Status int
+// baseURL :
+const baseURL = "https://localhost:8443/catsup/"
 
-const (
-	// WAITING :
-	WAITING = 0
-	// SENT :
-	SENT = 1
-	//RECEIVED :
-	RECEIVED = 2
-	// READ :
-	READ = 3
-)
+var httpClient *http.Client
 
-// Message :
-type Message struct {
-	ID        bson.ObjectId `bson:"_id,omitempty"`
-	Text      string
-	Timestamp time.Time
-	To        bson.ObjectId
-	From      bson.ObjectId
-	Status    Status
-}
-
-// User :
-type User struct {
-	ID    bson.ObjectId `bson:"_id,omitempty"`
-	Name  string
-	Email string
-	Hash  string
-}
-
-// BASE_URL :
-const BASE_URL = "https://localhost:8443/catsup/"
-
+// main :
 func main() {
 	if len(os.Args) != 3 {
 
@@ -57,15 +30,23 @@ func main() {
 		os.Exit(0)
 	}
 
-	//stop := make(chan os.Signal, 1)
-	//signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	httpClient = &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		},
+	}
 
 	name := os.Args[1]
 	pass := os.Args[2]
 
 	reader := bufio.NewReader(os.Stdin)
 
-	var users []User
+	var users []shared.User
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
 	for true {
 		fmt.Printf("===================================================\n")
@@ -134,8 +115,8 @@ func main() {
 					if index < 0 || index >= len(users) {
 						fmt.Println("user number out of range")
 						break
-
 					}
+
 					userID := users[index].ID.Hex()
 
 					sendMessage(userID, name, pass, strings.Join(words[2:], " "))
@@ -153,18 +134,10 @@ func main() {
 func sendMessage(userID, name, pass, text string) {
 	fmt.Printf("sending %s to %s\n", text, userID)
 
-	httpClient := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		},
-	}
-
 	// send to andrew
-	url := BASE_URL + "sendmessage/" + userID
+	url := baseURL + "message?to_id=" + userID
 
-	message := Message{}
+	message := shared.Message{}
 	message.Text = text
 
 	val, _ := json.Marshal(message)
@@ -184,16 +157,9 @@ func sendMessage(userID, name, pass, text string) {
 }
 
 // listMessages
-func listMessages(userID, name, pass string) []Message {
+func listMessages(userID, name, pass string) []shared.Message {
 
-	httpClient := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		},
-	}
-	url := BASE_URL + "getmessagelist/" + userID
+	url := baseURL + "messagelist?from_id=" + userID
 
 	fmt.Println(url)
 
@@ -212,7 +178,7 @@ func listMessages(userID, name, pass string) []Message {
 	}
 
 	defer resp.Body.Close()
-	var messages []Message
+	var messages []shared.Message
 	err = json.NewDecoder(resp.Body).Decode(&messages)
 
 	if err != nil {
@@ -223,19 +189,9 @@ func listMessages(userID, name, pass string) []Message {
 }
 
 // listUsers
-func listUsers(name, pass string) []User {
+func listUsers(name, pass string) []shared.User {
 
-	//	httpClient := http.DefaultClient
-
-	httpClient := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		},
-	}
-
-	url := BASE_URL + "getuserlist"
+	url := baseURL + "userlist"
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -252,7 +208,7 @@ func listUsers(name, pass string) []User {
 	}
 
 	defer resp.Body.Close()
-	var users []User
+	var users []shared.User
 	err = json.NewDecoder(resp.Body).Decode(&users)
 
 	if err != nil {
@@ -262,15 +218,15 @@ func listUsers(name, pass string) []User {
 	return users
 }
 
-func printMessages(user bson.ObjectId, messages []Message) {
+func printMessages(user bson.ObjectId, messages []shared.Message) {
+	fmt.Println("=========== FROM ============== TO =========")
 	for n, message := range messages {
 
 		if user == message.From {
-			fmt.Println(n+1, message.Timestamp.Format("3:04PM"), ": ", "\t\t"+message.Text)
+			fmt.Println(n+1, message.Timestamp.Format("3:04PM"), ": ", "\t\t\t"+message.Text)
 		} else {
 
 			fmt.Println(n+1, message.Timestamp.Format("3:04PM"), ": ", message.Text)
 		}
-
 	}
 }

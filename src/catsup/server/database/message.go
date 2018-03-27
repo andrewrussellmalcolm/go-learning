@@ -1,44 +1,21 @@
 package database
 
 import (
+	"catsup/shared"
 	"log"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
 )
 
-// Status :
-type Status int
-
-const (
-	// WAITING :
-	WAITING = 0
-	// SENT :
-	SENT = 1
-	//RECEIVED :
-	RECEIVED = 2
-	// READ :
-	READ = 3
-)
-
-// Message :
-type Message struct {
-	ID        bson.ObjectId `bson:"_id,omitempty"`
-	Text      string
-	Timestamp time.Time
-	To        bson.ObjectId
-	From      bson.ObjectId
-	Status    Status
-}
-
 // InsertMessage :
-func InsertMessage(message Message, to, from bson.ObjectId) (bson.ObjectId, error) {
+func InsertMessage(message shared.Message, to, from bson.ObjectId) (bson.ObjectId, error) {
 
 	message.ID = bson.NewObjectId()
 	message.Timestamp = time.Now()
 	message.To = to
 	message.From = from
-	message.Status = WAITING
+	message.Status = shared.WAITING
 	c := session.DB("test").C("messages")
 
 	err := c.Insert(message)
@@ -53,7 +30,7 @@ func InsertMessage(message Message, to, from bson.ObjectId) (bson.ObjectId, erro
 }
 
 /** */
-func UpdateMessage(message Message) (bson.ObjectId, error) {
+func UpdateMessage(message shared.Message) (bson.ObjectId, error) {
 
 	message.Timestamp = time.Now()
 	c := session.DB("test").C("messages")
@@ -76,15 +53,15 @@ func DeleteMessage(id bson.ObjectId) error {
 }
 
 /** */
-func QueryMessage(id bson.ObjectId) (Message, error) {
+func QueryMessage(id bson.ObjectId) (shared.Message, error) {
 
-	return Message{}, nil
+	return shared.Message{}, nil
 }
 
 // GetMessageList :
-func GetMessageList(toID, fromID bson.ObjectId) []Message {
+func GetMessageList(toID, fromID bson.ObjectId) []shared.Message {
 
-	var messages []Message
+	var messages []shared.Message
 	c := session.DB("test").C("messages")
 
 	// to := bson.M{"to": toID, "from": fromID}
@@ -106,9 +83,9 @@ func GetMessageList(toID, fromID bson.ObjectId) []Message {
 }
 
 /** */
-func QueryAllUnreadMessages() ([]Message, error) {
+func QueryAllUnreadMessages() ([]shared.Message, error) {
 
-	var messages []Message
+	var messages []shared.Message
 	c := session.DB("test").C("messages")
 	err := c.Find(nil).Sort("-timestamp").All(&messages)
 

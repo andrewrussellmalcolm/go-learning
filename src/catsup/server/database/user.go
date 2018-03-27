@@ -1,25 +1,18 @@
 package database
 
 import (
+	"catsup/shared"
 	"crypto/sha256"
 	"encoding/base64"
 
 	"github.com/globalsign/mgo/bson"
 )
 
-// User :
-type User struct {
-	ID    bson.ObjectId `bson:"_id,omitempty" json:"id,omitempty"`
-	Name  string        `json:"name,omitempty"`
-	Email string        `json:"email,omitempty"`
-	Hash  string        `json:"hash,omitempty"`
-}
-
 // CheckAuth :
-func CheckAuth(name, pass string) *User {
+func CheckAuth(name, pass string) *shared.User {
 	c := session.DB("test").C("users")
 
-	user := User{}
+	user := shared.User{}
 	err := c.Find(bson.M{"name": name}).One(&user)
 
 	if err != nil || user.Hash != hashPassword(pass) {
@@ -38,10 +31,10 @@ func hashPassword(password string) string {
 }
 
 // GetUserByID :
-func GetUserByID(id string) *User {
+func GetUserByID(id string) *shared.User {
 	c := session.DB("test").C("users")
 
-	user := User{}
+	user := shared.User{}
 	err := c.Find(bson.M{"_id": id}).One(&user)
 
 	if err != nil {
@@ -53,10 +46,10 @@ func GetUserByID(id string) *User {
 }
 
 // GetUserList :
-func GetUserList() []User {
+func GetUserList() []shared.User {
 	c := session.DB("test").C("users")
 
-	var users []User
+	var users []shared.User
 	err := c.Find(nil).All(&users)
 
 	if err != nil {
@@ -70,7 +63,7 @@ func GetUserList() []User {
 // CreateUser :
 func CreateUser(name, email, pass string) bool {
 
-	user := User{Name: name, Email: email, Hash: hashPassword(pass)}
+	user := shared.User{Name: name, Email: email, Hash: hashPassword(pass)}
 
 	c := session.DB("test").C("users")
 
