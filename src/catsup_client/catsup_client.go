@@ -66,7 +66,6 @@ func main() {
 	reader := bufio.NewReader(os.Stdin)
 
 	var users []User
-	var messages []Message
 
 	for true {
 		fmt.Printf("===================================================\n")
@@ -94,10 +93,28 @@ func main() {
 				}
 
 			case "m":
-				messages = listMessages(name, pass)
+				if len(words) > 1 {
 
-				for n, message := range messages {
-					fmt.Println(n+1, message.Timestamp.Format("3:04PM"), ": ", message.Text)
+					fmt.Println(words[1])
+
+					index, err := strconv.Atoi(words[1])
+					index--
+
+					if err != nil {
+						fmt.Println("user number must be an integer")
+						break
+					}
+
+					if index < 0 || index >= len(users) {
+						fmt.Println("user number out of range")
+						break
+
+					}
+					userID := users[index].ID.Hex()
+
+					printMessages(users[index].ID, listMessages(userID, name, pass))
+				} else {
+					fmt.Println("no user id supplied")
 				}
 
 			case "s":
@@ -121,11 +138,12 @@ func main() {
 					}
 					userID := users[index].ID.Hex()
 
-					fmt.Println("message>", words[3:])
-					sendMessage(userID, name, pass, "message")
+					sendMessage(userID, name, pass, strings.Join(words[2:], " "))
 				} else {
-					fmt.Println("no message supplied")
+					fmt.Println("no user id or message supplied")
 				}
+			default:
+				fmt.Println("unknown command")
 			}
 		}
 	}
@@ -166,7 +184,7 @@ func sendMessage(userID, name, pass, text string) {
 }
 
 // listMessages
-func listMessages(name, pass string) []Message {
+func listMessages(userID, name, pass string) []Message {
 
 	httpClient := &http.Client{
 		Transport: &http.Transport{
@@ -175,7 +193,7 @@ func listMessages(name, pass string) []Message {
 			},
 		},
 	}
-	url := BASE_URL + "getmessagelist/5ab8a3387ebb035f8933ef6d"
+	url := BASE_URL + "getmessagelist/" + userID
 
 	fmt.Println(url)
 
@@ -242,4 +260,17 @@ func listUsers(name, pass string) []User {
 	}
 
 	return users
+}
+
+func printMessages(user bson.ObjectId, messages []Message) {
+	for n, message := range messages {
+
+		if user == message.From {
+			fmt.Println(n+1, message.Timestamp.Format("3:04PM"), ": ", "\t\t"+message.Text)
+		} else {
+
+			fmt.Println(n+1, message.Timestamp.Format("3:04PM"), ": ", message.Text)
+		}
+
+	}
 }
