@@ -13,7 +13,6 @@ import (
 	"os"
 
 	"github.com/globalsign/mgo/bson"
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/goji/httpauth"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
