@@ -15,9 +15,11 @@ import (
 	"syscall"
 
 	"github.com/globalsign/mgo/bson"
+	//	termbox "github.com/nsf/termbox-go"
 )
 
 // baseURL :
+//const baseURL = "https://35.176.163.49:443/catsup/"
 const baseURL = "https://localhost:8443/catsup/"
 
 var httpClient *http.Client
@@ -29,6 +31,12 @@ func main() {
 		fmt.Printf("Usage %s useranme password\n", os.Args[0])
 		os.Exit(0)
 	}
+
+	// err := termbox.Init()
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// defer termbox.Close()
 
 	httpClient = &http.Client{
 		Transport: &http.Transport{
@@ -49,6 +57,8 @@ func main() {
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
 	for true {
+		///termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
+
 		fmt.Printf("===================================================\n")
 		fmt.Printf("Enter an option\n")
 		fmt.Printf("u = list users\n")
@@ -69,9 +79,7 @@ func main() {
 
 			case "u":
 				users = listUsers(name, pass)
-				for n, user := range users {
-					fmt.Println(n+1, user.Name, user.Email)
-				}
+				printUsers(users)
 
 			case "m":
 				if len(words) > 1 {
@@ -228,5 +236,11 @@ func printMessages(user bson.ObjectId, messages []shared.Message) {
 
 			fmt.Println(n+1, message.Timestamp.Format("3:04PM"), ": ", message.Text)
 		}
+	}
+}
+
+func printUsers(users []shared.User) {
+	for n, user := range users {
+		fmt.Println(n+1, user.Name, user.Email, user.LastAccess)
 	}
 }

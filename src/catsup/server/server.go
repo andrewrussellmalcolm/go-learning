@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/globalsign/mgo/bson"
 	_ "github.com/go-sql-driver/mysql"
@@ -44,6 +45,7 @@ func main() {
 	// start the router
 	router := mux.NewRouter()
 
+	router.HandleFunc("/catsup/userstatus", getUserStatus).Methods("GET")
 	router.HandleFunc("/catsup/userlist", getUserList).Methods("GET")
 	router.HandleFunc("/catsup/messagelist", getMessageList).Methods("GET")
 	router.HandleFunc("/catsup/message", postMessage).Methods("POST")
@@ -74,7 +76,7 @@ func postMessage(w http.ResponseWriter, r *http.Request) {
 	setJSONContentType(w)
 	queryValues := r.URL.Query()
 
-	session, _ := store.Get(r, "cookie-name")
+	session, _ := store.Get(r, "session")
 
 	user := session.Values["user"].(*shared.User)
 	var message shared.Message
@@ -108,11 +110,20 @@ func getUserList(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// getUserStatus :
+func getUserStatus(w http.ResponseWriter, r *http.Request) {
+	queryValues := r.URL.Query()
+	fromID := queryValues.Get("from_id")
+	user := database.GetUserByID(fromID)
+	lastAccess := user.LastAccess
+	json.NewEncoder(w).Encode(lastAccess)
+}
+
 func getMessageList(w http.ResponseWriter, r *http.Request) {
 	setJSONContentType(w)
 
 	queryValues := r.URL.Query()
-	session, _ := store.Get(r, "cookie-name")
+	session, _ := store.Get(r, "session")
 	toID := session.Values["user"].(*shared.User).ID
 	fromID := bson.ObjectIdHex(queryValues.Get("from_id"))
 	messages := database.GetMessageList(toID, fromID)
@@ -127,17 +138,18 @@ func getMessageList(w http.ResponseWriter, r *http.Request) {
 // checkAuth
 func checkAuth(name, pass string, r *http.Request) bool {
 
-	session, _ := store.Get(r, "cookie-name")
+	session, _ := store.Get(r, "session")
 
 	user := database.CheckAuth(name, pass)
 
 	if user != nil {
-		session.Values["authenticated"] = true
 		session.Values["user"] = user
+
+		user.LastAccess = time.Now()
+		database.UpdateUserAccessTime(user.ID, time.Now())
 		return true
 	}
 
-	session.Values["authenticated"] = false
 	log.Printf("Attempted access by %s failed\n", name)
 	return false
 }

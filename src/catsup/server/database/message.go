@@ -64,13 +64,6 @@ func GetMessageList(toID, fromID bson.ObjectId) []shared.Message {
 	var messages []shared.Message
 	c := session.DB("test").C("messages")
 
-	// to := bson.M{"to": toID, "from": fromID}
-	// from := bson.M{"to": fromID, "from": toID}
-	// toAndFrom := bson.M{"$or": []bson.M{to, from}}
-
-	//to :=
-	//from :=
-
 	toAndFrom := bson.M{"$or": []bson.M{bson.M{"to": toID, "from": fromID}, bson.M{"to": fromID, "from": toID}}}
 
 	err := c.Find(toAndFrom).Sort("-timestamp").All(&messages)

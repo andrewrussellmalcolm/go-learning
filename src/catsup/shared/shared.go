@@ -32,10 +32,11 @@ type Message struct {
 
 // User :
 type User struct {
-	ID    bson.ObjectId `bson:"_id,omitempty" json:"id,omitempty"`
-	Name  string        `json:"name,omitempty"`
-	Email string        `json:"email,omitempty"`
-	Hash  string        `json:"hash,omitempty"`
+	ID         bson.ObjectId `bson:"_id,omitempty" json:"id,omitempty"`
+	Name       string        `json:"name,omitempty"`
+	Email      string        `json:"email,omitempty"`
+	Hash       string        `json:"hash,omitempty"`
+	LastAccess time.Time     `json:"last_access,omitempty"`
 }
 
 func init() {

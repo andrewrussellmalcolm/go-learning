@@ -4,6 +4,8 @@ import (
 	"catsup/shared"
 	"crypto/sha256"
 	"encoding/base64"
+	"fmt"
+	"time"
 
 	"github.com/globalsign/mgo/bson"
 )
@@ -57,6 +59,9 @@ func GetUserList() []shared.User {
 		return nil
 	}
 
+	for _, user := range users {
+		fmt.Printf("=====%d\n", user.LastAccess.Minute())
+	}
 	return users
 }
 
@@ -69,5 +74,20 @@ func CreateUser(name, email, pass string) bool {
 
 	err := c.Insert(user)
 
+	return err == nil
+}
+
+// UpdateUserAccessTime :
+func UpdateUserAccessTime(id bson.ObjectId, time time.Time) bool {
+
+	c := session.DB("test").C("users")
+
+	err := c.Update(bson.M{"_id": id}, bson.M{"$set": bson.M{"last_access": time}})
+
+	if err != nil {
+
+		panic(err)
+	}
+	fmt.Printf("%v %v\n", id, time)
 	return err == nil
 }
