@@ -43,7 +43,7 @@ func UpdateMessage(message shared.Message) (bson.ObjectId, error) {
 	return message.ID, nil
 }
 
-/** */
+// DeleteMessage :
 func DeleteMessage(id bson.ObjectId) error {
 
 	c := session.DB("test").C("messages")
@@ -52,7 +52,7 @@ func DeleteMessage(id bson.ObjectId) error {
 	return err
 }
 
-/** */
+// QueryMessage :
 func QueryMessage(id bson.ObjectId) (shared.Message, error) {
 
 	return shared.Message{}, nil
@@ -61,7 +61,7 @@ func QueryMessage(id bson.ObjectId) (shared.Message, error) {
 // GetMessageList :
 func GetMessageList(toID, fromID bson.ObjectId) []shared.Message {
 
-	var messages []shared.Message
+	messages := []shared.Message{}
 	c := session.DB("test").C("messages")
 
 	toAndFrom := bson.M{"$or": []bson.M{bson.M{"to": toID, "from": fromID}, bson.M{"to": fromID, "from": toID}}}

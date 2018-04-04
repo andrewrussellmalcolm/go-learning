@@ -4,7 +4,6 @@ import (
 	"catsup/shared"
 	"crypto/sha256"
 	"encoding/base64"
-	"fmt"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
@@ -18,7 +17,6 @@ func CheckAuth(name, pass string) *shared.User {
 	err := c.Find(bson.M{"name": name}).One(&user)
 
 	if err != nil || user.Hash != hashPassword(pass) {
-
 		return nil
 	}
 
@@ -33,14 +31,13 @@ func hashPassword(password string) string {
 }
 
 // GetUserByID :
-func GetUserByID(id string) *shared.User {
+func GetUserByID(id bson.ObjectId) *shared.User {
 	c := session.DB("test").C("users")
 
 	user := shared.User{}
 	err := c.Find(bson.M{"_id": id}).One(&user)
 
 	if err != nil {
-
 		return nil
 	}
 
@@ -51,17 +48,13 @@ func GetUserByID(id string) *shared.User {
 func GetUserList() []shared.User {
 	c := session.DB("test").C("users")
 
-	var users []shared.User
+	users := []shared.User{}
 	err := c.Find(nil).All(&users)
 
 	if err != nil {
-
 		return nil
 	}
 
-	for _, user := range users {
-		fmt.Printf("=====%d\n", user.LastAccess.Minute())
-	}
 	return users
 }
 
@@ -82,12 +75,11 @@ func UpdateUserAccessTime(id bson.ObjectId, time time.Time) bool {
 
 	c := session.DB("test").C("users")
 
-	err := c.Update(bson.M{"_id": id}, bson.M{"$set": bson.M{"last_access": time}})
+	err := c.Update(bson.M{"_id": id}, bson.M{"$set": bson.M{"timestamp": time}})
 
 	if err != nil {
-
 		panic(err)
 	}
-	fmt.Printf("%v %v\n", id, time)
+
 	return err == nil
 }

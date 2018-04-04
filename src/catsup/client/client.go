@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/globalsign/mgo/bson"
 	//	termbox "github.com/nsf/termbox-go"
@@ -56,14 +57,23 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
+	go func() {
+
+		for {
+			updateUserStatus(name, pass)
+			time.Sleep(30 * time.Second)
+		}
+	}()
+
 	for true {
 		///termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 
 		fmt.Printf("===================================================\n")
 		fmt.Printf("Enter an option\n")
-		fmt.Printf("u = list users\n")
-		fmt.Printf("m = list messages\n")
-		fmt.Printf("s = send message (e.g. s 1 this is my message)\n")
+		fmt.Printf("lu = list users\n")
+		fmt.Printf("us = user status\n")
+		fmt.Printf("lm = list messages (e.g m 1\n")
+		fmt.Printf("sm = send message (e.g. s 1 this is my message)\n")
 		fmt.Printf("q = quit\n")
 		fmt.Printf("===================================================\n")
 		fmt.Print(">")
@@ -77,14 +87,12 @@ func main() {
 			case "q":
 				os.Exit(0)
 
-			case "u":
+			case "lu":
 				users = listUsers(name, pass)
 				printUsers(users)
 
-			case "m":
+			case "lm":
 				if len(words) > 1 {
-
-					fmt.Println(words[1])
 
 					index, err := strconv.Atoi(words[1])
 					index--
@@ -106,11 +114,9 @@ func main() {
 					fmt.Println("no user id supplied")
 				}
 
-			case "s":
+			case "sm":
 
 				if len(words) > 1 {
-
-					fmt.Println(words[1])
 
 					index, err := strconv.Atoi(words[1])
 					index--
@@ -131,6 +137,30 @@ func main() {
 				} else {
 					fmt.Println("no user id or message supplied")
 				}
+			case "us":
+				if len(words) > 1 {
+
+					index, err := strconv.Atoi(words[1])
+					index--
+
+					if err != nil {
+						fmt.Println("user number must be an integer")
+						break
+					}
+
+					if index < 0 || index >= len(users) {
+						fmt.Println("user number out of range")
+						break
+
+					}
+					userID := users[index].ID.Hex()
+
+					printUserStatus(getUserStatus(userID, name, pass))
+
+				} else {
+					fmt.Println("no user id supplied")
+				}
+
 			default:
 				fmt.Println("unknown command")
 			}
@@ -226,6 +256,56 @@ func listUsers(name, pass string) []shared.User {
 	return users
 }
 
+// getUserStatus
+func getUserStatus(userID, name, pass string) shared.UserStatus {
+
+	url := baseURL + "userstatus?user_id=" + userID
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	req.SetBasicAuth(name, pass)
+
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+
+	defer resp.Body.Close()
+	var userStatus shared.UserStatus
+	err = json.NewDecoder(resp.Body).Decode(&userStatus)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return userStatus
+}
+
+// getUserStatus
+func updateUserStatus(name, pass string) {
+
+	url := baseURL + "userstatus"
+
+	req, err := http.NewRequest("PUT", url, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	req.SetBasicAuth(name, pass)
+
+	req.Header.Set("Accept", "application/json")
+
+	_, err = httpClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func printMessages(user bson.ObjectId, messages []shared.Message) {
 	fmt.Println("=========== FROM ============== TO =========")
 	for n, message := range messages {
@@ -241,6 +321,16 @@ func printMessages(user bson.ObjectId, messages []shared.Message) {
 
 func printUsers(users []shared.User) {
 	for n, user := range users {
-		fmt.Println(n+1, user.Name, user.Email, user.LastAccess)
+		fmt.Println(n+1, user.Name, user.Email, user.Timestamp)
 	}
+}
+
+func printUserStatus(userStatus shared.UserStatus) {
+
+	if userStatus == shared.ONLINE {
+		fmt.Println("User online")
+	} else {
+		fmt.Println("User offline")
+	}
+
 }

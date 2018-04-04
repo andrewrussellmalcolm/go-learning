@@ -44,6 +44,7 @@ func main() {
 	// start the router
 	router := mux.NewRouter()
 
+	router.HandleFunc("/catsup/userstatus", updateUserStatus).Methods("PUT")
 	router.HandleFunc("/catsup/userstatus", getUserStatus).Methods("GET")
 	router.HandleFunc("/catsup/userlist", getUserList).Methods("GET")
 	router.HandleFunc("/catsup/messagelist", getMessageList).Methods("GET")
@@ -74,9 +75,7 @@ func updateMessage(w http.ResponseWriter, r *http.Request) {
 func postMessage(w http.ResponseWriter, r *http.Request) {
 	setJSONContentType(w)
 	queryValues := r.URL.Query()
-
 	session, _ := store.Get(r, "session")
-
 	user := session.Values["user"].(*shared.User)
 	var message shared.Message
 
@@ -112,10 +111,26 @@ func getUserList(w http.ResponseWriter, r *http.Request) {
 // getUserStatus :
 func getUserStatus(w http.ResponseWriter, r *http.Request) {
 	queryValues := r.URL.Query()
-	fromID := queryValues.Get("from_id")
+	fromID := bson.ObjectIdHex(queryValues.Get("user_id"))
 	user := database.GetUserByID(fromID)
-	lastAccess := user.LastAccess
-	json.NewEncoder(w).Encode(lastAccess)
+
+	if user != nil {
+		lastAccess := user.Timestamp
+		userStatus := shared.OFFLINE
+		if lastAccess.After(time.Now().Add(-30 * time.Second)) {
+			userStatus = shared.ONLINE
+		}
+		json.NewEncoder(w).Encode(userStatus)
+
+	} else {
+		w.WriteHeader(http.StatusNotFound)
+	}
+}
+
+/**  */
+func updateUserStatus(w http.ResponseWriter, r *http.Request) {
+	setJSONContentType(w)
+	w.WriteHeader(http.StatusOK)
 }
 
 func getMessageList(w http.ResponseWriter, r *http.Request) {
@@ -144,7 +159,6 @@ func checkAuth(name, pass string, r *http.Request) bool {
 	if user != nil {
 		session.Values["user"] = user
 
-		user.LastAccess = time.Now()
 		database.UpdateUserAccessTime(user.ID, time.Now())
 		return true
 	}

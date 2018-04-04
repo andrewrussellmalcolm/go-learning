@@ -8,6 +8,6 @@
         "cert_path" : "server.pem",
         "key_path" : "server.key",        
         "cookie_key" : "759CFD5FE3295E8FF47E9CAE42CC1F62",
-        "port" : ":443"
+        "port" : ":8443"
     }
 }
