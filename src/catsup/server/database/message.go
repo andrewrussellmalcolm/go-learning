@@ -67,6 +67,12 @@ func QueryNewMessageList(toID, fromID bson.ObjectId) []shared.Message {
 		return nil
 	}
 
+	_, err = c.UpdateAll(bson.M{}, bson.M{"$set": bson.M{"status": shared.READ}})
+
+	if err != nil {
+		panic(err)
+	}
+
 	return messages
 }
 
