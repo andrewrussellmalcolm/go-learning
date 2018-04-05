@@ -83,6 +83,38 @@ func listMessages(userID, name, pass string) []shared.Message {
 	return messages
 }
 
+// listNewMessages
+func listNewMessages(userID, name, pass string) []shared.Message {
+
+	url := serverURL + "newmessagelist?from_id=" + userID
+
+	fmt.Println(url)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	req.SetBasicAuth(name, pass)
+
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+
+	defer resp.Body.Close()
+	var messages []shared.Message
+	err = json.NewDecoder(resp.Body).Decode(&messages)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return messages
+}
+
 // listUsers
 func listUsers(name, pass string) []shared.User {
 

@@ -14,13 +14,13 @@ import (
 // 	}
 // }
 
-func fill(x, y, w, h int, cell termbox.Cell) {
-	for ly := 0; ly < h; ly++ {
-		for lx := 0; lx < w; lx++ {
-			termbox.SetCell(x+lx, y+ly, cell.Ch, cell.Fg, cell.Bg)
-		}
-	}
-}
+// func fill(x, y, w, h int, cell termbox.Cell) {
+// 	for ly := 0; ly < h; ly++ {
+// 		for lx := 0; lx < w; lx++ {
+// 			termbox.SetCell(x+lx, y+ly, cell.Ch, cell.Fg, cell.Bg)
+// 		}
+// 	}
+// }
 
 func rune_advance_len(r rune, pos int) int {
 	if r == '\t' {
