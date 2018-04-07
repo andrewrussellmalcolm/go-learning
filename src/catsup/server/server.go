@@ -47,9 +47,9 @@ func main() {
 	router.HandleFunc("/catsup/userstatus", updateUserStatus).Methods("PUT")
 	router.HandleFunc("/catsup/userstatus", getUserStatus).Methods("GET")
 	router.HandleFunc("/catsup/userlist", getUserList).Methods("GET")
+	router.HandleFunc("/catsup/newmessagelist", getNewMessageList).Methods("GET")
 	router.HandleFunc("/catsup/messagelist", getMessageList).Methods("GET")
 	router.HandleFunc("/catsup/message", postMessage).Methods("POST")
-	router.HandleFunc("/catsup/message", updateMessage).Methods("PUT")
 	router.HandleFunc("/catsup/message", deleteMessage).Methods("DELETE")
 
 	router.Use(httpauth.BasicAuth(httpauth.AuthOptions{AuthFunc: checkAuth}))
@@ -87,7 +87,7 @@ func postMessage(w http.ResponseWriter, r *http.Request) {
 
 	toID := bson.ObjectIdHex(queryValues.Get("to_id"))
 
-	_, err = database.InsertMessage(message, toID, user.ID)
+	_, err = database.CreateMessage(message, toID, user.ID)
 
 	if err == nil {
 		w.WriteHeader(http.StatusOK)
@@ -99,7 +99,7 @@ func postMessage(w http.ResponseWriter, r *http.Request) {
 // getUserList :
 func getUserList(w http.ResponseWriter, r *http.Request) {
 
-	users := database.GetUserList()
+	users := database.QueryUserList()
 
 	if users != nil {
 		json.NewEncoder(w).Encode(users)
@@ -112,7 +112,7 @@ func getUserList(w http.ResponseWriter, r *http.Request) {
 func getUserStatus(w http.ResponseWriter, r *http.Request) {
 	queryValues := r.URL.Query()
 	fromID := bson.ObjectIdHex(queryValues.Get("user_id"))
-	user := database.GetUserByID(fromID)
+	user := database.QueryUserByID(fromID)
 
 	if user != nil {
 		lastAccess := user.Timestamp
@@ -140,7 +140,23 @@ func getMessageList(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "session")
 	toID := session.Values["user"].(*shared.User).ID
 	fromID := bson.ObjectIdHex(queryValues.Get("from_id"))
-	messages := database.GetMessageList(toID, fromID)
+	messages := database.QueryMessageList(toID, fromID)
+
+	if messages != nil {
+		json.NewEncoder(w).Encode(messages)
+	} else {
+		w.WriteHeader(http.StatusNotFound)
+	}
+}
+
+func getNewMessageList(w http.ResponseWriter, r *http.Request) {
+	setJSONContentType(w)
+
+	queryValues := r.URL.Query()
+	session, _ := store.Get(r, "session")
+	toID := session.Values["user"].(*shared.User).ID
+	fromID := bson.ObjectIdHex(queryValues.Get("from_id"))
+	messages := database.QueryNewMessageList(toID, fromID)
 
 	if messages != nil {
 		json.NewEncoder(w).Encode(messages)

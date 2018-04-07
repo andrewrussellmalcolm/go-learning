@@ -30,8 +30,8 @@ func hashPassword(password string) string {
 	return base64.URLEncoding.EncodeToString(hasher.Sum(nil))
 }
 
-// GetUserByID :
-func GetUserByID(id bson.ObjectId) *shared.User {
+// QueryUserByID :
+func QueryUserByID(id bson.ObjectId) *shared.User {
 	c := session.DB("test").C("users")
 
 	user := shared.User{}
@@ -44,8 +44,8 @@ func GetUserByID(id bson.ObjectId) *shared.User {
 	return &user
 }
 
-// GetUserList :
-func GetUserList() []shared.User {
+// QueryUserList :
+func QueryUserList() []shared.User {
 	c := session.DB("test").C("users")
 
 	users := []shared.User{}
