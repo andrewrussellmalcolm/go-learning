@@ -13,7 +13,7 @@ func (client *Client) Reverse(data string) string {
 		panic(err)
 	}
 
-	in := &shared.Request{encryptedData}
+	in := &shared.Request{Body: encryptedData}
 
 	var out shared.Response
 
@@ -40,7 +40,7 @@ func (client *Client) ToUpper(data string) string {
 		panic(err)
 	}
 
-	in := &shared.Request{encryptedData}
+	in := &shared.Request{Body: encryptedData}
 
 	var out shared.Response
 

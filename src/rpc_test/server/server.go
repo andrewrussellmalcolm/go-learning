@@ -8,11 +8,10 @@ import (
 )
 
 func main() {
-	stringOps := new(StringOps)
 
 	server := rpc.NewServer()
 
-	server.RegisterName("StringOps", stringOps)
+	server.Register(new(StringOps))
 
 	listener, err := net.Listen("tcp", ":1234")
 

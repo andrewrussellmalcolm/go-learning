@@ -1,10 +1,11 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/rpc"
-	"os"
+	"time"
 )
 
 // Client :
@@ -12,28 +13,29 @@ type Client struct {
 	conn *rpc.Client
 }
 
+var addr = flag.String("addr", "localhost:1234", "service address")
+
 func main() {
 
-	if len(os.Args) != 2 {
-		panic("Usage: client SERVER_ADDR:SERVER PORT")
-	}
+	flag.Parse()
 
-	conn, err := rpc.Dial("tcp", os.Args[1])
+	conn, err := rpc.Dial("tcp", *addr)
 
 	if err != nil {
-		log.Fatal("Connecting", err)
+		log.Fatal("Connecting ", err)
 	}
 
 	client := &Client{conn: conn}
 
-	for i := 0; ; i++ {
+	const messages = 1000
+	for {
 
-		client.Reverse("Hello, world")
-		client.ToUpper("Hello, world")
-		client.ToLower("Hello, world")
+		start := time.Now()
+		for message := 0; message < messages; message++ {
 
-		if i%1000 == 0 {
-			fmt.Print(".")
+			client.Reverse("Hello, world")
 		}
+
+		fmt.Printf("%.0f messages per second\r", messages/time.Now().Sub(start).Seconds())
 	}
 }
