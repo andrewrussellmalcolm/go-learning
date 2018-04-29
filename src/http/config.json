@@ -1,0 +1,14 @@
+{
+    "database":
+    {
+        "db_name": "test",
+        "username": "root",
+        "password": "root"
+    },
+    "server":
+    {
+        "cert_path" : "server.pem",
+        "key_path" : "server.key",        
+        "port" : ":8443"
+    }
+}
