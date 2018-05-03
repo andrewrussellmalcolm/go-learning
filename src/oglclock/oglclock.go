@@ -13,9 +13,6 @@ import (
 )
 
 const (
-	width  = 500
-	height = 500
-
 	vertexShaderSource = `
 		#version 410
 		in vec3 vp;
@@ -38,7 +35,7 @@ const (
 	out vec4 color;
 	void main()
 	{
-		color = vec4(1.0f, 1.0f, 0.0f, 1.0f);
+		color = vec4(0.0f, 0.0f, 1.0f, 1.0f);
 	}
 	` + "\x00"
 
@@ -47,11 +44,11 @@ const (
 	out vec4 color;
 	void main()
 	{
-		color = vec4(0.0f, 0.0f, 1.0f, 1.0f);
+		color = vec4(1.0f, 1.0f, 0.0f, 1.0f);
 	}
 	` + "\x00"
 
-	fragmentShaderWhiteSource = `
+	fragmentShaderCardinalsSource = `
 	#version 410 core
 	out vec4 color;
 	void main()
@@ -63,9 +60,10 @@ const (
 var shaderProgramMinute uint32
 var shaderProgramSecond uint32
 var shaderProgramHour uint32
-var shaderProgramWhite uint32
+var shaderProgramCardinals uint32
 
 func main() {
+
 	runtime.LockOSThread()
 
 	window := initGlfw()
@@ -74,47 +72,63 @@ func main() {
 
 	for !window.ShouldClose() {
 
-		gl.ClearColor(0.0, 0.0, 0.0, 1.0)
-		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-
 		hour := float64(time.Now().Hour())
 		minute := float64(time.Now().Minute())
 		second := float64(time.Now().Second())
 		millis := float64(time.Now().Nanosecond() / 1000000)
 
+		//gl.ClearColor(0.0, 0.0, 0.0, 1.0)
+		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+
+		drawBezel()
 		drawCardinals()
-		drawHourHand(hour, minute)
-		drawMinuteHand(minute, second)
+		drawHourHand(hour, minute, second)
+		drawMinuteHand(minute, second, millis)
 		drawSecondHand(second, millis)
+		drawBoss()
 		glfw.PollEvents()
 		window.SwapBuffers()
+		time.Sleep(time.Millisecond * 50)
+	}
+}
+
+func drawBezel() {
+	for theta := 0.0; theta < 2*math.Pi; theta += math.Pi / 30 {
+		gl.UseProgram(shaderProgramCardinals)
+		draw(initVertices(theta, 0.78, 0.01, 0.8))
 	}
 }
 
 func drawCardinals() {
 	for theta := 0.0; theta < 2*math.Pi; theta += math.Pi / 6 {
-		gl.UseProgram(shaderProgramWhite)
+		gl.UseProgram(shaderProgramCardinals)
 		draw(initVertices(theta, 0.8, 0.01, 0.7))
 	}
 }
 
+func drawBoss() {
+	for theta := 0.0; theta < 2*math.Pi; theta += math.Pi / 12 {
+		gl.UseProgram(shaderProgramSecond)
+		draw(initVertices(theta, 0.05, 0.01, 0.0))
+	}
+}
 func drawSecondHand(second, millis float64) {
 	theta := 2.0 * math.Pi * (second + millis/1000) / 60.0
-	gl.UseProgram(shaderProgramMinute)
-	draw(initVertices(theta, 0.7, 0.005, -0.1))
+	gl.UseProgram(shaderProgramSecond)
+	draw(initVertices(theta, 0.8, 0.005, -0.1))
 }
 
-func drawHourHand(hour, minute float64) {
-	theta := 2.0 * math.Pi * ((hour + minute/60.0) / 12.0)
+func drawHourHand(hour, minute, second float64) {
+	theta := 2.0 * math.Pi * ((hour + (minute+second/60)/60.0) / 12.0)
 	gl.UseProgram(shaderProgramHour)
 	draw(initVertices(theta, 0.6, 0.02, -0.1))
 }
 
-func drawMinuteHand(minute, second float64) {
+func drawMinuteHand(minute, second, millis float64) {
 
-	theta := 2.0 * math.Pi * (minute + second/60.0) / 60.0
-	gl.UseProgram(shaderProgramSecond)
-	draw(initVertices(theta, 0.8, 0.01, -0.1))
+	theta := 2.0 * math.Pi * (minute + (second+millis/1000)/60.0) / 60.0
+	gl.UseProgram(shaderProgramMinute)
+	draw(initVertices(theta, 0.7, 0.01, -0.1))
 }
 
 func initVertices(theta, r, w, y float64) []float32 {
@@ -158,6 +172,9 @@ func draw(vertices []float32) {
 	gl.BindVertexArray(vao)
 
 	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
+	gl.DeleteBuffers(1, &ebo)
+	gl.DeleteBuffers(1, &vbo)
+	gl.DeleteBuffers(1, &vao)
 }
 
 // initGlfw initializes glfw and returns a Window to use.
@@ -170,9 +187,9 @@ func initGlfw() *glfw.Window {
 	glfw.WindowHint(glfw.ContextVersionMinor, 1)
 	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
 	glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
-	glfw.WindowHint(glfw.Samples, 4)
+	glfw.WindowHint(glfw.Samples, 10)
 
-	window, err := glfw.CreateWindow(width, height, "Clock", nil, nil)
+	window, err := glfw.CreateWindow(300, 300, "Clock", nil, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -210,14 +227,14 @@ func initOpenGL() {
 		panic(err)
 	}
 
-	fragmentShaderWhite, err := compileShader(fragmentShaderWhiteSource, gl.FRAGMENT_SHADER)
+	fragmentShaderCardinlas, err := compileShader(fragmentShaderCardinalsSource, gl.FRAGMENT_SHADER)
 	if err != nil {
 		panic(err)
 	}
 	shaderProgramMinute = linkShaders([]uint32{vertexShader, fragmentShaderMinute})
 	shaderProgramSecond = linkShaders([]uint32{vertexShader, fragmentShaderSecond})
 	shaderProgramHour = linkShaders([]uint32{vertexShader, fragmentShaderHour})
-	shaderProgramWhite = linkShaders([]uint32{vertexShader, fragmentShaderWhite})
+	shaderProgramCardinals = linkShaders([]uint32{vertexShader, fragmentShaderCardinlas})
 }
 func linkShaders(shaders []uint32) uint32 {
 	program := gl.CreateProgram()
