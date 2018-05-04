@@ -1,0 +1,26 @@
+
+syntax = "proto3";
+
+package testservice;
+
+message GetRequest {
+ string data=1;
+}
+
+message GetResponse {
+ string data=1;
+}
+
+message PutRequest {
+ string data=1;
+}
+
+message PutResponse {
+ string data=1;
+}
+
+service TestService {
+ rpc Get(GetRequest) returns (GetResponse){ }
+ rpc Put(PutRequest) returns (PutResponse){ }
+}
+

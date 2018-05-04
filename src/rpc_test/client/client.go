@@ -3,62 +3,50 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"net/rpc"
-	"time"
+	api "rpc_test/shared"
 )
 
-// Client :
-type Client struct {
-	conn *rpc.Client
-}
-
-type Address struct {
-	addr string
-	set  bool
-}
-
-func (address *Address) Set(addr string) error {
-	address.addr = addr
-	address.set = true
-	return nil
-}
-
-func (address *Address) String() string {
-	return address.addr
-}
-
-var address Address
-
-func init() {
-	flag.Var(&address, "s", "service address e.g. localhost:1234")
-}
+var (
+	address = flag.String("address", "localhost:1234", "service address e.g. localhost:1234")
+)
 
 func main() {
 
 	flag.Parse()
 
-	if !address.set {
-		log.Fatal("No adress set")
-	}
-
-	conn, err := rpc.Dial("tcp", address.addr)
+	client, err := rpc.Dial("tcp", *address)
 
 	if err != nil {
-		log.Fatal("Connecting ", err)
+		panic(err)
 	}
 
-	client := &Client{conn: conn}
+	in := api.Task{0, "Feed the cat", api.Owner{}, 0}
+	err = AddTask(client, &in, &api.Void{})
 
-	const messages = 1000
-	for {
-
-		start := time.Now()
-		for message := 0; message < messages; message++ {
-
-			client.Reverse("Hello, world")
-		}
-
-		fmt.Printf("%.0f messages per second\r", messages/time.Now().Sub(start).Seconds())
+	if err != nil {
+		panic(err)
 	}
+
+	tasks := []api.Task{}
+	err = ListTasks(client, &api.Void{}, &tasks)
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("%d tasks in list\n", len(tasks))
+	for _, task := range tasks {
+		fmt.Printf("%v\n", task)
+	}
+}
+
+// ListTasks : client helper func
+func ListTasks(client *rpc.Client, in *api.Void, out *[]api.Task) error {
+	return client.Call("TaskListServer.ListTasks", in, out)
+}
+
+// AddTask : client helper func
+func AddTask(client *rpc.Client, in *api.Task, out *api.Void) error {
+	return client.Call("TaskListServer.AddTask", in, out)
 }

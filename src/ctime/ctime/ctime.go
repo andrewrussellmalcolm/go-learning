@@ -9,12 +9,12 @@ import (
 )
 
 // Strftime : 'C' style time formatter
-// exzmple usage: fmt.Println(strftime(time.Now(), "%Y-%m-%d %H:%M:%S"))
+// example usage: fmt.Println(ctime.Strftime(time.Now(), "%Y-%m-%d %H:%M:%S"))
 func Strftime(time time.Time, format string) string {
 
-	const buflen = 64
+	buflen := len(format) + 32
+	output := make([]C.char, buflen)
 	var tm C.struct_tm
-	buffer := make([]C.char, buflen)
 	tm.tm_sec = C.int(time.Second())
 	tm.tm_min = C.int(time.Minute())
 	tm.tm_hour = C.int(time.Hour())
@@ -26,7 +26,7 @@ func Strftime(time time.Time, format string) string {
 	zone, _ := time.Zone()
 	tm.tm_zone = C.CString(zone)
 
-	C.strftime(&buffer[0], buflen, C.CString(format), &tm)
+	C.strftime(&output[0], C.ulong(buflen), C.CString(format), &tm)
 
-	return C.GoString(&buffer[0])
+	return C.GoString(&output[0])
 }

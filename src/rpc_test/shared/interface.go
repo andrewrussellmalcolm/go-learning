@@ -1,8 +1,15 @@
 package shared
 
-// StringOps :
-type StringOps interface {
-	Reverse(in *Request, out *Response) error
-	ToUpper(in *Request, out *Response) error
-	ToLower(in *Request, out *Response) error
+type Owner struct {
+	Name string
+}
+
+type Task struct {
+	ID          int
+	Description string
+	Owner       Owner
+	Status      int
+}
+
+type Void struct {
 }

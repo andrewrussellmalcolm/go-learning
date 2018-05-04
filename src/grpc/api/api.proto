@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package taskservice;
+
+message Void {
+}
+
+message Owner {
+    uint64 id=1;
+    string name=2;
+    string email=3;
+}
+
+message Task {
+    uint64 id=1;
+    string description=2;
+    Owner owner =3;
+}
+
+message TaskList {
+    repeated Task task=1;
+}
+
+service TaskService {
+ rpc AddTask(Task) returns (Void){ }
+ rpc GetTaskList(Void) returns (TaskList){ }
+ rpc UpdateTask(Task) returns (Void){ }
+ rpc DeleteTask(Task) returns (Void){ }
+
+}
