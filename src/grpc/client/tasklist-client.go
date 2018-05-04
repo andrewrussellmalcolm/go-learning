@@ -51,4 +51,9 @@ func main() {
 	for _, task := range taskList.Task {
 		fmt.Printf("Task: %v\n", task)
 	}
+
+	taskServiceClient.DeleteTask(ctx, taskList.Task[0])
+	if err != nil {
+		panic(err)
+	}
 }

@@ -21,35 +21,64 @@ var (
 
 func main() {
 	flag.Parse()
+
+	taskService := &taskService{}
+
+	err := taskService.database.Open()
+	if err != nil {
+		log.Fatalf("failed to open database %v", err)
+	}
+
+	defer taskService.database.Close()
+
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	grpcServer := grpc.NewServer()
 
-	taskservice.RegisterTaskServiceServer(grpcServer, &taskService{})
+	taskservice.RegisterTaskServiceServer(grpcServer, taskService)
 
 	grpcServer.Serve(lis)
 }
 
 type taskService struct {
-	taskList taskservice.TaskList
+	database Database
 }
 
 func (t *taskService) AddTask(ctx context.Context, in *taskservice.Task) (*taskservice.Void, error) {
 	fmt.Println("AddTask")
-	t.taskList.Task = append(t.taskList.Task, in)
+	err := t.database.AddTask(in)
+	if err != nil {
+		return nil, err
+	}
+
 	return &taskservice.Void{}, nil
 }
 
 func (t *taskService) GetTaskList(ctx context.Context, in *taskservice.Void) (*taskservice.TaskList, error) {
-	return &t.taskList, nil
+	fmt.Println("GetTaskList")
+	tl, err := t.database.GetTaskList()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return tl, nil
 }
 
 func (t *taskService) UpdateTask(ctx context.Context, in *taskservice.Task) (*taskservice.Void, error) {
+	fmt.Println("UpdateTask")
 	return &taskservice.Void{}, nil
 }
 
 func (t *taskService) DeleteTask(ctx context.Context, in *taskservice.Task) (*taskservice.Void, error) {
+	fmt.Println("DeleteTask")
+	err := t.database.DeleteTask(in)
+
+	if err != nil {
+		return nil, err
+	}
+
 	return &taskservice.Void{}, nil
 }
