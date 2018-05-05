@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-gl/gl/v4.1-core/gl"
+	"github.com/go-gl/gl/v4.2-core/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
 )
 
@@ -158,6 +158,7 @@ func draw(vertices []float32) {
 
 	gl.GenVertexArrays(1, &vao)
 	gl.BindVertexArray(vao)
+	gl.EnableVertexAttribArray(0)
 
 	gl.GenBuffers(1, &vbo)
 	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
@@ -167,14 +168,16 @@ func draw(vertices []float32) {
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo)
 	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, 4*len(elements), gl.Ptr(elements), gl.STATIC_DRAW)
 
-	gl.EnableVertexAttribArray(0)
 	gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 0, nil)
 	gl.BindVertexArray(vao)
 
 	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
+	gl.DisableVertexAttribArray(0)
 	gl.DeleteBuffers(1, &ebo)
 	gl.DeleteBuffers(1, &vbo)
 	gl.DeleteBuffers(1, &vao)
+	gl.DeleteVertexArrays(1, &vao)
+
 }
 
 // initGlfw initializes glfw and returns a Window to use.
@@ -203,6 +206,7 @@ func initOpenGL() {
 	if err := gl.Init(); err != nil {
 		panic(err)
 	}
+
 	version := gl.GoStr(gl.GetString(gl.VERSION))
 	log.Println("OpenGL version", version)
 
@@ -227,14 +231,19 @@ func initOpenGL() {
 		panic(err)
 	}
 
-	fragmentShaderCardinlas, err := compileShader(fragmentShaderCardinalsSource, gl.FRAGMENT_SHADER)
+	fragmentShaderCardinals, err := compileShader(fragmentShaderCardinalsSource, gl.FRAGMENT_SHADER)
 	if err != nil {
 		panic(err)
 	}
 	shaderProgramMinute = linkShaders([]uint32{vertexShader, fragmentShaderMinute})
 	shaderProgramSecond = linkShaders([]uint32{vertexShader, fragmentShaderSecond})
 	shaderProgramHour = linkShaders([]uint32{vertexShader, fragmentShaderHour})
-	shaderProgramCardinals = linkShaders([]uint32{vertexShader, fragmentShaderCardinlas})
+	shaderProgramCardinals = linkShaders([]uint32{vertexShader, fragmentShaderCardinals})
+
+	gl.DetachShader(fragmentShaderMinute, vertexShader)
+	gl.DetachShader(fragmentShaderHour, vertexShader)
+	gl.DetachShader(fragmentShaderSecond, vertexShader)
+	gl.DetachShader(fragmentShaderCardinals, vertexShader)
 }
 func linkShaders(shaders []uint32) uint32 {
 	program := gl.CreateProgram()
