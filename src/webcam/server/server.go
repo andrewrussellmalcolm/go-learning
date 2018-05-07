@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"math/rand"
 	"net"
 	"streaming/api"
 
@@ -56,21 +55,26 @@ func main() {
 
 func (t *streamingService) GetStream(void *streamingservice.Void, stream streamingservice.StreamingService_GetStreamServer) error {
 
-	payload := make([]byte, 60)
+	initWebcam()
+	defer closeWebcam()
+	startStreaming()
 
+	fmt.Println("A")
 	for t.frameIndex < int32(*frames) {
 
-		for i := 0; i < len(payload); i++ {
+		frameMessage := streamingservice.Frame{Index: t.frameIndex}
+		waitForFrame()
 
-			payload[i] = byte('A') + byte(rand.Intn(26))
-		}
+		payload, err := getFrame()
 
-		frame := streamingservice.Frame{Index: t.frameIndex, Payload: payload}
+		_ = err
+		frameMessage.Payload = payload
 
-		if err := stream.Send(&frame); err != nil {
+		if err := stream.Send(&frameMessage); err != nil {
 			return err
 		}
-		fmt.Printf("frame %d payload size = %d payload=%s\n", frame.Index, len(frame.Payload), string(frame.Payload))
+
+		fmt.Printf("frame %d payload size = %d payload=%s\n", frameMessage.Index, len(frameMessage.Payload))
 		t.frameIndex++
 	}
 	t.frameIndex = 0
