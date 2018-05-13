@@ -104,7 +104,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	dir := user.HomeDir + "/gocode/src/explorer"
+	dir := user.HomeDir
 	listDir(dir, 0, treeStore, treeStore.Append(nil))
 
 	treeView.SetModel(treeStore)

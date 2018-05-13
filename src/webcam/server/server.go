@@ -21,7 +21,6 @@ type streamingService struct {
 var (
 	port   = flag.Int("port", 10000, "The server port")
 	noAuth = flag.Bool("noauth", false, "Set to true to disable authentication")
-	frames = flag.Int("frames", 20, "The number of frames returned in a single request")
 )
 
 func main() {
@@ -48,19 +47,23 @@ func main() {
 	streamingservice.RegisterStreamingServiceServer(grpcServer, &streamingService{})
 
 	fmt.Printf("server listening on %d\n", *port)
-	fmt.Printf("frame per stream %d\n", *frames)
 	fmt.Printf("no auth %t\n", *noAuth)
+	initWebcam()
+	defer closeWebcam()
+
+	err = selectBestWebcamJpegFormat()
+	if err != nil {
+		log.Fatalf("Failed select a webcam format: %v", err)
+	}
+
 	grpcServer.Serve(lis)
 }
 
 func (t *streamingService) GetStream(void *streamingservice.Void, stream streamingservice.StreamingService_GetStreamServer) error {
 
-	initWebcam()
-	defer closeWebcam()
 	startStreaming()
 
-	fmt.Println("A")
-	for t.frameIndex < int32(*frames) {
+	for {
 
 		frameMessage := streamingservice.Frame{Index: t.frameIndex}
 		waitForFrame()
@@ -73,12 +76,5 @@ func (t *streamingService) GetStream(void *streamingservice.Void, stream streami
 		if err := stream.Send(&frameMessage); err != nil {
 			return err
 		}
-
-		fmt.Printf("frame %d payload size = %d payload=%s\n", frameMessage.Index, len(frameMessage.Payload))
-		t.frameIndex++
 	}
-	t.frameIndex = 0
-
-	fmt.Println("Frame transfer complete")
-	return nil
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"streaming/api"
 
 	"google.golang.org/grpc"
@@ -36,7 +37,7 @@ func main() {
 		conn, err = grpc.Dial(*address, grpc.WithTransportCredentials(creds))
 	}
 	if err != nil {
-		panic(err)
+		log.Fatalf("dial failed %v", err)
 	}
 
 	streamingServiceClient := streamingservice.NewStreamingServiceClient(conn)
@@ -46,7 +47,13 @@ func main() {
 	client, err := streamingServiceClient.GetStream(ctx, &streamingservice.Void{})
 
 	if err != nil {
-		panic(err)
+		log.Fatalf("%v %v", client, err)
+	}
+
+	f, err := os.OpenFile("tmp.jpg", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0777)
+
+	if err != nil {
+		log.Fatalf("file open failed %v", err)
 	}
 
 	for {
@@ -58,8 +65,15 @@ func main() {
 			log.Fatalf("%v %v", client, err)
 		}
 
-		fmt.Printf("Frame %d payload size=%d payload=%s\n", frame.Index, len(frame.Payload), string(frame.Payload))
+		fmt.Printf("Frame %d payload size=%d\n", frame.Index, len(frame.Payload))
+
+		_, err = f.Write(frame.Payload)
+		if err != nil {
+			log.Fatalf("file write failed %v", err)
+		}
 	}
+
+	f.Close()
 
 	fmt.Println("Frame transfer complete")
 }
