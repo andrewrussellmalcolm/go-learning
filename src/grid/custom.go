@@ -1,124 +1,74 @@
 package main
 
-//#cgo pkg-config: cairo cairo-gobject gtk+-3.0
-//#include <stdlib.h>
-//#include <cairo.h>
-//#include <cairo-gobject.h>
-//#include <gdk/gdk.h>
-//#include <gtk/gtk.h>
-//#include </home/andrew/go-learning/src/github.com/gotk3/gotk3/gdk/gdk.go.h>
-import "C"
 import (
-	"unsafe"
+	"fmt"
 
 	"github.com/gotk3/gotk3/cairo"
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/gtk"
 )
 
-// Custom is a custom widget
-type Custom struct {
-	gtk.DrawingArea
-	drawFunc func(width, height float64, ctx *cairo.Context)
-	width    int
-	height   int
-	surface  *cairo.Surface
+type Point struct {
+	x, y float64
 }
 
-// CustomNew creates a new widget
-func CustomNew(drawFunc func(width, height float64, ctx *cairo.Context)) (*Custom, error) {
+type Custom struct {
+	*gtk.DrawingArea
+	points []Point
+}
 
-	drawingArea, err := gtk.DrawingAreaNew()
+func CustomNew() (*Custom, error) {
+
+	da, err := gtk.DrawingAreaNew()
 
 	if err != nil {
 		return nil, err
 	}
-
-	custom := Custom{*drawingArea, drawFunc, 0, 0, nil}
-
-	drawingArea.Connect("draw", custom.drawEvent)
-	drawingArea.Connect("configure-event", custom.configureEvent)
-
-	return &custom, nil
+	return &Custom{da, nil}, nil
 }
 
-// ConfigureEvent :
-func (c *Custom) configureEvent(drawingArea *gtk.DrawingArea, evt *gdk.Event) bool {
+func (c *Custom) MotionEvent(custom *gtk.DrawingArea, evt *gdk.Event) {
 
-	if c.surface != nil {
+	x, y := gdk.EventMotionNewFromEvent(evt).MotionVal()
+	fmt.Printf("MNE %f %f\n", x, y)
 
-		surfaceNative := c.surface.Native()
+	fmt.Printf("%d\n", gdk.EventButtonNewFromEvent(evt).Button())
 
-		s := (*C.cairo_surface_t)(unsafe.Pointer(surfaceNative))
-		C.cairo_surface_destroy(s)
+	c.points = append(c.points, Point{x, y})
+	c.QueueDraw()
+}
+
+func (c *Custom) ButtonEvent(widget *gtk.DrawingArea, evt *gdk.Event) {
+
+	x, y := gdk.EventButtonNewFromEvent(evt).MotionVal()
+	fmt.Printf("BPE %f %f\n", x, y)
+
+	fmt.Printf("%d\n", gdk.EventButtonNewFromEvent(evt).Button())
+	c.points = nil
+	c.QueueDraw()
+}
+
+func (c *Custom) DrawCustom(custom *gtk.DrawingArea, ctx *cairo.Context) {
+
+	w := float64(c.GetAllocatedWidth())
+	h := float64(c.GetAllocatedHeight())
+
+	ctx.SetSourceRGB(0, 0, 0)
+	ctx.Rectangle(0, 0, w, h)
+	ctx.Fill()
+
+	ctx.SetSourceRGB(1.0, 1.0, 1.0)
+	// ctx.MoveTo(0, 0)
+	// ctx.LineTo(w, h)
+	// ctx.Stroke()
+
+	// ctx.MoveTo(w, 0)
+	// ctx.LineTo(0, h)
+	// ctx.Stroke()
+
+	for _, p := range c.points {
+
+		ctx.Rectangle(p.x-3, p.y-3, 6, 6)
+		ctx.Fill()
 	}
-
-	parent, err := drawingArea.GetParent()
-	if err != nil {
-		return false
-	}
-
-	p, err := parent.GetWindow()
-	if err != nil {
-		return false
-	}
-
-	c.height = drawingArea.GetAllocatedHeight()
-	c.width = drawingArea.GetAllocatedWidth()
-
-	//fmt.Printf("w=%d h=%d\n", c.width, c.height)
-	c.surface = createSimilarSurface(p, cairo.CONTENT_COLOR, c.width, c.height)
-
-	if err != nil {
-		return false
-	}
-
-	c.Clear()
-	return true
-}
-
-// Clear the surfate to whhite
-func (c *Custom) Clear() {
-	//fmt.Printf("Clear\n")
-	ctx := cairo.Create(c.surface)
-	ctx.SetSourceRGB(1, 1, 1)
-	ctx.Paint()
-	c.drawFunc(float64(c.width), float64(c.height), ctx)
-	destroyContext(ctx)
-}
-
-// Clear the surfate to whhite
-func (c *Custom) Draw() {
-	ctx := cairo.Create(c.surface)
-	ctx.SetSourceRGB(1, 1, 1)
-
-	c.drawFunc(float64(c.width), float64(c.height), ctx)
-
-	c.QueueDrawArea(0, 0, c.width, c.height)
-}
-
-// DrawEvent :
-func (c *Custom) drawEvent(drawingArea *gtk.DrawingArea, ctx *cairo.Context) bool {
-	//	fmt.Printf("drawEvent\n")
-	ctx.SetSourceSurface(c.surface, 0, 0)
-
-	ctx.Paint()
-	return false
-}
-
-// CreateSimilarSurface is a wrapper around gdk_window_create_similar_surface
-func createSimilarSurface(window *gdk.Window, content cairo.Content, width, height int) *cairo.Surface {
-
-	gdkWin := C.toGdkWindow(unsafe.Pointer(window.GObject))
-
-	surfaceNative := C.gdk_window_create_similar_surface(gdkWin, C.cairo_content_t(content), C.int(width), C.int(height))
-
-	surface := cairo.NewSurface(uintptr(unsafe.Pointer(surfaceNative)), false)
-	return surface
-}
-
-func destroyContext(ctx *cairo.Context) {
-	ctxNative := ctx.Native()
-	cx := (*C.cairo_t)(unsafe.Pointer(ctxNative))
-	C.cairo_destroy(cx)
 }
