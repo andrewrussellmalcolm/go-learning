@@ -1,79 +1,28 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"time"
 
-	"golang.org/x/net/context"
-	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/drive/v3"
 )
 
-// Retrieve a token, saves the token, then returns the generated client.
-func getClient(config *oauth2.Config) *http.Client {
-	tokenFile := "token.json"
-	tok, err := tokenFromFile(tokenFile)
-	if err != nil {
-		tok = getTokenFromWeb(config)
-		saveToken(tokenFile, tok)
-	}
-	return config.Client(context.Background(), tok)
-}
-
-// Request a token from the web, then returns the retrieved token.
-func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
-	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
-	fmt.Printf("Go to the following link in your browser then type the "+
-		"authorization code: \n%v\n", authURL)
-
-	var authCode string
-	if _, err := fmt.Scan(&authCode); err != nil {
-		log.Fatalf("Unable to read authorization code %v", err)
-	}
-
-	tok, err := config.Exchange(oauth2.NoContext, authCode)
-	if err != nil {
-		log.Fatalf("Unable to retrieve token from web %v", err)
-	}
-	return tok
-}
-
-// Retrieves a token from a local file.
-func tokenFromFile(file string) (*oauth2.Token, error) {
-	f, err := os.Open(file)
-	defer f.Close()
-	if err != nil {
-		return nil, err
-	}
-	tok := &oauth2.Token{}
-	err = json.NewDecoder(f).Decode(tok)
-	return tok, err
-}
-
-// Saves a token to a file path.
-func saveToken(path string, token *oauth2.Token) {
-	fmt.Printf("Saving credential file to: %s\n", path)
-	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
-	defer f.Close()
-	if err != nil {
-		log.Fatalf("Unable to cache oauth token: %v", err)
-	}
-	json.NewEncoder(f).Encode(token)
-}
-
+/** */
 func main() {
+
+	if len(os.Args) < 2 {
+		fmt.Println("Must supply a file to upload")
+		os.Exit(-1)
+	}
 	b, err := ioutil.ReadFile("client_secret.json")
 	if err != nil {
 		log.Fatalf("Unable to read client secret file: %v", err)
 	}
 
-	// If modifying these scopes, delete your previously saved client_secret.json.
 	config, err := google.ConfigFromJSON(b, drive.DriveFileScope)
 	if err != nil {
 		log.Fatalf("Unable to parse client secret file to config: %v", err)
@@ -84,10 +33,11 @@ func main() {
 		log.Fatalf("Unable to retrieve Drive client: %v", err)
 	}
 
-	upload(srv, "guru.tar")
-	list(srv)
+	upload(srv, os.Args[1])
+	//list(srv)
 }
 
+/** */
 func list(srv *drive.Service) {
 	r, err := srv.Files.List().PageSize(10).
 		Fields("nextPageToken, files(id, name)").Do()
@@ -104,6 +54,7 @@ func list(srv *drive.Service) {
 	}
 }
 
+/** */
 func upload(srv *drive.Service, filename string) {
 
 	f, err := os.Open(filename)
@@ -111,15 +62,36 @@ func upload(srv *drive.Service, filename string) {
 		log.Fatalf("error opening %q: %v", filename, err)
 	}
 
+	fi, err := f.Stat()
+	if err != nil {
+		log.Fatalf("Could not obtain stat %v", err)
+	}
+
+	size := fi.Size()
+
+	fmt.Printf("The file is %d bytes long\n", size)
+
 	t0 := time.Now()
-	driveFile, err := srv.Files.Create(&drive.File{Name: filename, MimeType: "application/tar"}).Media(f).Do()
+
+	r := NewProgressReader(f, func(chunk, total int64) {
+
+		if chunk > 0 {
+			fmt.Printf("Chunk of %d bytes transferred, total %d, time elapsed %.0fs\n", chunk, total, time.Since(t0).Seconds())
+		}
+	})
+
+	driveFile, err := srv.Files.Create(&drive.File{Name: filename, MimeType: "application/tar"}).Media(r).Do()
 	if err != nil {
 		log.Fatalf("Unable to create file: %v", err)
 	}
 
-	log.Printf("file: %+v", driveFile)
+	_ = driveFile
 
+	fmt.Printf("Total bytes transferred %d\n", r.total)
 	t1 := time.Now()
 
-	fmt.Printf("time taken=%.1fs\n", t1.Sub(t0).Seconds())
+	time := t1.Sub(t0).Seconds()
+	fmt.Printf("time taken=%.1fs\n", time)
+
+	fmt.Printf("transfer rate %.2fMbytes/s\n", float32(size)/float32(time)/1000000.0)
 }

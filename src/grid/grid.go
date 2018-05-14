@@ -30,10 +30,11 @@ func main() {
 
 	custom, err := CustomNew()
 
-	custom.SetEvents(custom.GetEvents() | int(gdk.POINTER_MOTION_MASK) | int(gdk.BUTTON_PRESS_MASK))
+	custom.SetEvents(custom.GetEvents() | int(gdk.POINTER_MOTION_MASK) | int(gdk.BUTTON_PRESS_MASK) | int(gdk.BUTTON_RELEASE_MASK))
 	custom.Connect("draw", custom.DrawCustom)
 	custom.Connect("motion-notify-event", custom.MotionEvent)
-	custom.Connect("button-press-event", custom.ButtonEvent)
+	custom.Connect("button-press-event", custom.ButtonEvent, true)
+	custom.Connect("button-release-event", custom.ButtonEvent, false)
 
 	grid, err := gtk.GridNew()
 	bailOnError(err)

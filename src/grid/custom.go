@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/gotk3/gotk3/cairo"
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/gtk"
@@ -15,6 +13,7 @@ type Point struct {
 type Custom struct {
 	*gtk.DrawingArea
 	points []Point
+	draw   bool
 }
 
 func CustomNew() (*Custom, error) {
@@ -24,28 +23,39 @@ func CustomNew() (*Custom, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Custom{da, nil}, nil
+	return &Custom{da, nil, false}, nil
 }
 
 func (c *Custom) MotionEvent(custom *gtk.DrawingArea, evt *gdk.Event) {
 
 	x, y := gdk.EventMotionNewFromEvent(evt).MotionVal()
-	fmt.Printf("MNE %f %f\n", x, y)
 
-	fmt.Printf("%d\n", gdk.EventButtonNewFromEvent(evt).Button())
-
-	c.points = append(c.points, Point{x, y})
-	c.QueueDraw()
+	if c.draw {
+		c.points = append(c.points, Point{x, y})
+		c.QueueDraw()
+	}
 }
 
 func (c *Custom) ButtonEvent(widget *gtk.DrawingArea, evt *gdk.Event) {
 
-	x, y := gdk.EventButtonNewFromEvent(evt).MotionVal()
-	fmt.Printf("BPE %f %f\n", x, y)
+	//x, y := gdk.EventButtonNewFromEvent(evt).MotionVal()
 
-	fmt.Printf("%d\n", gdk.EventButtonNewFromEvent(evt).Button())
-	c.points = nil
-	c.QueueDraw()
+	if gdk.EventButtonNewFromEvent(evt).Button() == 1 && gdk.EventButtonNewFromEvent(evt).State() == 0 {
+
+		c.draw = true
+		c.QueueDraw()
+	}
+
+	if gdk.EventButtonNewFromEvent(evt).Button() == 1 && gdk.EventButtonNewFromEvent(evt).State() != 0 {
+
+		c.draw = false
+	}
+
+	if gdk.EventButtonNewFromEvent(evt).Button() == 3 && gdk.EventButtonNewFromEvent(evt).State() == 0 {
+
+		c.points = nil
+		c.QueueDraw()
+	}
 }
 
 func (c *Custom) DrawCustom(custom *gtk.DrawingArea, ctx *cairo.Context) {
@@ -66,9 +76,11 @@ func (c *Custom) DrawCustom(custom *gtk.DrawingArea, ctx *cairo.Context) {
 	// ctx.LineTo(0, h)
 	// ctx.Stroke()
 
-	for _, p := range c.points {
+	if c.draw {
+		for _, p := range c.points {
 
-		ctx.Rectangle(p.x-3, p.y-3, 6, 6)
-		ctx.Fill()
+			ctx.Rectangle(p.x-3, p.y-3, 6, 6)
+			ctx.Fill()
+		}
 	}
 }
