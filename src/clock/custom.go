@@ -1,32 +1,20 @@
 package main
 
-//#cgo pkg-config: cairo cairo-gobject gtk+-3.0
-//#include <stdlib.h>
-//#include <cairo.h>
-//#include <cairo-gobject.h>
-//#include <gdk/gdk.h>
-//#include <gtk/gtk.h>
-//#include </home/andrew/go-learning/src/github.com/gotk3/gotk3/gdk/gdk.go.h>
-import "C"
 import (
-	"unsafe"
+	"math"
+	"time"
 
 	"github.com/gotk3/gotk3/cairo"
-	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/gtk"
 )
 
 // Custom is a custom widget
 type Custom struct {
-	gtk.DrawingArea
-	drawFunc func(width, height float64, ctx *cairo.Context)
-	width    int
-	height   int
-	surface  *cairo.Surface
+	*gtk.DrawingArea
 }
 
 // CustomNew creates a new widget
-func CustomNew(drawFunc func(width, height float64, ctx *cairo.Context)) (*Custom, error) {
+func CustomNew() (*Custom, error) {
 
 	drawingArea, err := gtk.DrawingAreaNew()
 
@@ -34,91 +22,80 @@ func CustomNew(drawFunc func(width, height float64, ctx *cairo.Context)) (*Custo
 		return nil, err
 	}
 
-	custom := Custom{*drawingArea, drawFunc, 0, 0, nil}
-
-	drawingArea.Connect("draw", custom.drawEvent)
-	drawingArea.Connect("configure-event", custom.configureEvent)
-
-	return &custom, nil
+	return &Custom{drawingArea}, nil
 }
 
-// ConfigureEvent :
-func (c *Custom) configureEvent(drawingArea *gtk.DrawingArea, evt *gdk.Event) bool {
+// draws the c4 clock
+func (c *Custom) DrawCustom(custom *gtk.DrawingArea, ctx *cairo.Context) {
 
-	if c.surface != nil {
+	w := float64(c.GetAllocatedWidth())
+	h := float64(c.GetAllocatedHeight())
 
-		surfaceNative := c.surface.Native()
+	// calculate center and radius
+	x0 := w / 2
+	y0 := h / 2
+	r := 2 * math.Min(x0, y0) / 3
 
-		s := (*C.cairo_surface_t)(unsafe.Pointer(surfaceNative))
-		C.cairo_surface_destroy(s)
+	hours := float64(time.Now().Hour())
+	mins := float64(time.Now().Minute())
+	secs := float64(time.Now().Second())
+
+	// fil background
+	ctx.SetSourceRGB(0, 0, 0)
+	ctx.Rectangle(0, 0, w, h)
+	ctx.Fill()
+
+	// draw trhe cardinals
+	ctx.SetSourceRGB(1.0, 1.0, 1.0)
+	ctx.SetLineWidth(10)
+	for theta0 := 0.0; theta0 < 2*math.Pi; theta0 += math.Pi / 6 {
+		x1 := x0 + r*math.Sin(theta0)*0.9
+		y1 := y0 + r*math.Cos(theta0)*0.9
+		x2 := x0 + r*math.Sin(theta0)*1.1
+		y2 := y0 + r*math.Cos(theta0)*1.1
+		ctx.MoveTo(x1, y1)
+		ctx.LineTo(x2, y2)
+		ctx.Stroke()
 	}
 
-	parent, err := drawingArea.GetParent()
-	if err != nil {
-		return false
-	}
+	// draw hour hand
+	ctx.SetSourceRGB(0, 0, 1.0)
+	ctx.SetLineWidth(16)
+	theta1 := -math.Pi * 2.0 * (hours + (mins / 60.0)) / 12.0
+	x3 := x0 - r*math.Sin(theta1)*0.75
+	y3 := y0 - r*math.Cos(theta1)*0.75
+	x4 := x0 + r*math.Sin(theta1)*0.2
+	y4 := y0 + r*math.Cos(theta1)*0.2
+	ctx.MoveTo(x4, y4)
+	ctx.LineTo(x3, y3)
+	ctx.Stroke()
 
-	p, err := parent.GetWindow()
-	if err != nil {
-		return false
-	}
+	// draw minute hand
+	ctx.SetSourceRGB(1.0, 0.0, 0.0)
+	ctx.SetLineWidth(10)
+	theta2 := -math.Pi * 2.0 * (mins + secs/60.0) / 60.0
+	x5 := x0 - r*math.Sin(theta2)*1.1
+	y5 := y0 - r*math.Cos(theta2)*1.1
+	x6 := x0 + r*math.Sin(theta2)*0.2
+	y6 := y0 + r*math.Cos(theta2)*0.2
+	ctx.MoveTo(x6, y6)
+	ctx.LineTo(x5, y5)
+	ctx.Stroke()
 
-	c.height = drawingArea.GetAllocatedHeight()
-	c.width = drawingArea.GetAllocatedWidth()
+	// draw second hand
+	ctx.SetSourceRGB(1.0, 1.0, 0.0)
+	ctx.SetLineWidth(1)
+	theta3 := -math.Pi * 2.0 * secs / 60.0
+	x7 := x0 - r*math.Sin(theta3)*1.1
+	y7 := y0 - r*math.Cos(theta3)*1.1
+	x8 := x0 + r*math.Sin(theta3)*0.2
+	y8 := y0 + r*math.Cos(theta3)*0.2
+	ctx.MoveTo(x8, y8)
+	ctx.LineTo(x7, y7)
+	ctx.Stroke()
 
-	//fmt.Printf("w=%d h=%d\n", c.width, c.height)
-	c.surface = createSimilarSurface(p, cairo.CONTENT_COLOR, c.width, c.height)
-
-	if err != nil {
-		return false
-	}
-
-	c.Clear()
-	return true
-}
-
-// Clear the surfate to whhite
-func (c *Custom) Clear() {
-	//fmt.Printf("Clear\n")
-	ctx := cairo.Create(c.surface)
-	ctx.SetSourceRGB(1, 1, 1)
-	ctx.Paint()
-	c.drawFunc(float64(c.width), float64(c.height), ctx)
-	destroyContext(ctx)
-}
-
-// Clear the surfate to whhite
-func (c *Custom) Draw() {
-	ctx := cairo.Create(c.surface)
-	ctx.SetSourceRGB(1, 1, 1)
-
-	c.drawFunc(float64(c.width), float64(c.height), ctx)
-
-	c.QueueDrawArea(0, 0, c.width, c.height)
-}
-
-// DrawEvent :
-func (c *Custom) drawEvent(drawingArea *gtk.DrawingArea, ctx *cairo.Context) bool {
-	//	fmt.Printf("drawEvent\n")
-	ctx.SetSourceSurface(c.surface, 0, 0)
-
-	ctx.Paint()
-	return false
-}
-
-// CreateSimilarSurface is a wrapper around gdk_window_create_similar_surface
-func createSimilarSurface(window *gdk.Window, content cairo.Content, width, height int) *cairo.Surface {
-
-	gdkWin := C.toGdkWindow(unsafe.Pointer(window.GObject))
-
-	surfaceNative := C.gdk_window_create_similar_surface(gdkWin, C.cairo_content_t(content), C.int(width), C.int(height))
-
-	surface := cairo.NewSurface(uintptr(unsafe.Pointer(surfaceNative)), false)
-	return surface
-}
-
-func destroyContext(ctx *cairo.Context) {
-	ctxNative := ctx.Native()
-	cx := (*C.cairo_t)(unsafe.Pointer(ctxNative))
-	C.cairo_destroy(cx)
+	// draw central boss
+	//ctx.Scale(1, 0.7)
+	ctx.Arc(x0, y0, r/15, 0, math.Pi*2)
+	ctx.Fill()
 }

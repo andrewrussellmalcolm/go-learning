@@ -4,6 +4,7 @@ package main
 //go build -v -tags gtk_3_18 -gcflags "-N -l"
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/gotk3/gotk3/gdk"
@@ -17,16 +18,11 @@ func main() {
 	bailOnError(err)
 
 	windowMain.SetTitle("Controller")
-	windowMain.SetDefaultSize(600, 300)
+	windowMain.SetDefaultSize(1600, 800)
 	//windowMain.SetPosition(gtk.WIN_POS_CENTER)
 	windowMain.Connect("destroy", func() {
 		gtk.MainQuit()
 	})
-
-	// some buttons
-	buttonStart, err := gtk.ButtonNewWithLabel("Start")
-	buttonStop, err := gtk.ButtonNewWithLabel("Stop")
-	buttonPanic, err := gtk.ButtonNewWithLabel("PANIC!!")
 
 	custom, err := CustomNew()
 
@@ -36,23 +32,39 @@ func main() {
 	custom.Connect("button-press-event", custom.ButtonEvent, true)
 	custom.Connect("button-release-event", custom.ButtonEvent, false)
 
-	grid, err := gtk.GridNew()
+	toolbar, err := gtk.ToolbarNew()
+	toolbar.SetStyle(gtk.TOOLBAR_TEXT)
+
+	colorButton, err := gtk.ToolButtonNew(nil, "Colour")
+	colorButton.Connect("clicked", func() {
+		colorChooser, err := gtk.ColorChooserDialogNew("Choose a color", windowMain)
+		if err != nil {
+			panic(err)
+		}
+
+		colorChooser.Connect("color-activated", func() {
+		})
+		response := gtk.ResponseType(colorChooser.Run())
+
+		fmt.Printf("respone %d\n", response)
+
+		switch response {
+		case gtk.RESPONSE_OK:
+			fmt.Printf("color chosen %v\n", colorChooser.GetRGBA())
+
+			custom.color = colorChooser.GetRGBA()
+		case gtk.RESPONSE_CANCEL:
+		}
+		colorChooser.Close()
+	})
+	toolbar.Insert(colorButton, 0)
+
+	box, err := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 0)
 	bailOnError(err)
-	grid.SetBorderWidth(10)
-	grid.SetRowSpacing(10)
-	grid.SetColumnSpacing(10)
-	grid.SetColumnHomogeneous(true)
-	grid.Attach(buttonStart, 0, 0, 1, 1)
-	grid.Attach(buttonStop, 0, 1, 1, 1)
-	grid.Attach(buttonPanic, 0, 2, 1, 1)
+	windowMain.Container.Add(box)
+	box.PackStart(toolbar, false, false, 0)
+	box.PackStart(custom, true, true, 0)
 
-	// vertical split pane
-	pane, err := gtk.PanedNew(gtk.ORIENTATION_HORIZONTAL)
-	pane.SetBorderWidth(10)
-	pane.Add1(grid)
-	pane.Add2(custom)
-
-	windowMain.Add(pane)
 	windowMain.ShowAll()
 
 	gtk.Main()

@@ -7,13 +7,15 @@ import (
 )
 
 type Point struct {
-	x, y float64
+	x, y  float64
+	color *gdk.RGBA
 }
 
 type Custom struct {
 	*gtk.DrawingArea
 	points []Point
 	draw   bool
+	color  *gdk.RGBA
 }
 
 func CustomNew() (*Custom, error) {
@@ -23,7 +25,7 @@ func CustomNew() (*Custom, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Custom{da, nil, false}, nil
+	return &Custom{da, nil, false, gdk.NewRGBA(1, 1, 1, 1)}, nil
 }
 
 func (c *Custom) MotionEvent(custom *gtk.DrawingArea, evt *gdk.Event) {
@@ -31,14 +33,12 @@ func (c *Custom) MotionEvent(custom *gtk.DrawingArea, evt *gdk.Event) {
 	x, y := gdk.EventMotionNewFromEvent(evt).MotionVal()
 
 	if c.draw {
-		c.points = append(c.points, Point{x, y})
+		c.points = append(c.points, Point{x, y, c.color})
 		c.QueueDraw()
 	}
 }
 
 func (c *Custom) ButtonEvent(widget *gtk.DrawingArea, evt *gdk.Event) {
-
-	//x, y := gdk.EventButtonNewFromEvent(evt).MotionVal()
 
 	if gdk.EventButtonNewFromEvent(evt).Button() == 1 && gdk.EventButtonNewFromEvent(evt).State() == 0 {
 
@@ -54,6 +54,7 @@ func (c *Custom) ButtonEvent(widget *gtk.DrawingArea, evt *gdk.Event) {
 	if gdk.EventButtonNewFromEvent(evt).Button() == 3 && gdk.EventButtonNewFromEvent(evt).State() == 0 {
 
 		c.points = nil
+
 		c.QueueDraw()
 	}
 }
@@ -67,20 +68,16 @@ func (c *Custom) DrawCustom(custom *gtk.DrawingArea, ctx *cairo.Context) {
 	ctx.Rectangle(0, 0, w, h)
 	ctx.Fill()
 
-	ctx.SetSourceRGB(1.0, 1.0, 1.0)
-	// ctx.MoveTo(0, 0)
-	// ctx.LineTo(w, h)
-	// ctx.Stroke()
+	ctx.SetSourceRGB(0, 0, 0)
+	ctx.Rectangle(0, 0, w, h)
+	ctx.Fill()
 
-	// ctx.MoveTo(w, 0)
-	// ctx.LineTo(0, h)
-	// ctx.Stroke()
+	for _, p := range c.points {
 
-	if c.draw {
-		for _, p := range c.points {
+		rgb := p.color.Floats()
+		ctx.SetSourceRGB(rgb[0], rgb[1], rgb[2])
 
-			ctx.Rectangle(p.x-3, p.y-3, 6, 6)
-			ctx.Fill()
-		}
+		ctx.Rectangle(p.x-3, p.y-3, 6, 6)
+		ctx.Fill()
 	}
 }
