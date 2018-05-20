@@ -1,55 +1,84 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
-	"os"
+	ce "shm-cache/cache"
 	"time"
 )
 
-const GB = (1024 * 1024 * 1024)
-
-var arraySizeFlag = flag.Int64("size", 8, "size of the array in GBytes")
-
 /** */
 func main() {
-	flag.Parse()
 
-	arraySize := *arraySizeFlag * GB
-	var f *os.File
+	var cache ce.Cache
 
-	fmt.Printf("Array Size = %dG\n", arraySize/(1024*1024*1024))
-
-	f, err := os.OpenFile("/dev/shm/bf-cache", os.O_RDWR|os.O_CREATE, 0600)
-	if err != nil {
-		log.Fatalf("failed to open cache memory file %v", err)
-	}
-
-	defer f.Close()
-
-	f.Seek(arraySize, 0)
-	f.Write([]byte("bf-cache 1.0"))
-
-	mm, err := mmap(f, arraySize)
-	if err != nil {
-		log.Fatalf("mapping shared memory %v", err)
-	}
-	fmt.Println("Starting test")
 	timeOperation(func() {
-		for i := int64(0); i < (arraySize); i++ {
-
-			//binary.BigEndian.PutUint64(mm[i:i+8], 0x1111222233334444)
-
-			//fmt.Printf("0x%x\n", i+8)
-			mm[i] = 'A'
+		err := ce.InitCache(&cache)
+		if err != nil {
+			log.Fatalf("failed to allocate entry array%v", err)
 		}
-	}, fmt.Sprintf("wrote 0x%x int64s", arraySize/8))
 
-	// binary.BigEndian.PutUint64(mm[0:8], 0)
-	// mm[arraySize-1] = 'P'
-	//binary.BigEndian.PutUint64(mm[arraySize-8:arraySize], 0)
+	}, fmt.Sprintf("creating cache"))
 
+	defer ce.DeinitCache(&cache)
+
+	timeOperation(func() {
+
+		stripe := cache.GetStripe(1)
+
+		for j := range stripe.GetEntries() {
+
+			stripe.GetEntry(j).SetLocationID(uint32(j))
+			stripe.GetEntry(j).SetMeasurement(uint32(j))
+			stripe.GetEntry(j).SetTimeOffset(uint32(j))
+		}
+
+	}, fmt.Sprintf("initialising single cache stripe"))
+
+	timeOperation(func() {
+
+		stripe := cache.GetStripe(1)
+
+		for j := range stripe.GetEntries() {
+
+			if stripe.GetEntry(j).GetLocationID() == 100 {
+
+				fmt.Printf("%v\n", stripe.GetEntry(j))
+			}
+		}
+
+	}, fmt.Sprintf("searching single cache stripe for a locationID"))
+
+	timeOperation(func() {
+
+		entries1 := cache.GetStripe(1).GetEntries()
+		entriesX := make([]ce.Entry, len(entries1))
+
+		fmt.Printf("entry %d LocationID%d\n", 100, entries1[100])
+
+		// copy - modify -replace
+		copy(entriesX, entries1)
+		entriesX[100].SetLocationID(555)
+		copy(entries1, entriesX)
+
+		fmt.Printf("entry %d LocationID%d\n", 100, entries1[100])
+
+	}, fmt.Sprintf("copy - modify - replace a cache stripe"))
+
+	timeOperation(func() {
+
+		var locationID = int32(0x10007700)
+
+		for i := 0; i < len(cache.GetStripes()); i++ {
+
+			if byte(i) == byte(locationID>>8) {
+				fmt.Printf("locationID is 0x%x in cache entry 0x%x\n", locationID, i)
+			}
+		}
+
+		//fmt.Printf("entry %d LocationID %d\n", 100, entryCache[1][100])
+
+	}, fmt.Sprintf("locate cache entry for LocationID"))
 }
 
 /** */
@@ -71,10 +100,3 @@ func timeOperation(operation func(), statement string) {
 		fmt.Printf("[%s] took %.1fs\n", statement, time/1000000000.0)
 	}
 }
-
-// writeMeasurement(uint64(0), 0x1111222233334444, 0x5555666677778888, mmap)
-
-// v, t := readMeasurement(uint64(0), mmap)
-
-// fmt.Printf("0x%x 0x%x\n", v, t)
-// mmap.Flush()
