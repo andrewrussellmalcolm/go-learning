@@ -3,61 +3,50 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"math/rand"
 	"os"
 	"time"
 
 	_ "github.com/lib/pq"
-	uuid "github.com/satori/go.uuid"
-)
-
-const (
-	DB_USER     = "postgres"
-	DB_PASSWORD = "PTdcI69z"
-	DB_NAME     = "test"
 )
 
 func main() {
 
-	dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable",
-		DB_USER, DB_PASSWORD, DB_NAME)
+	dbinfo := fmt.Sprintf("user=postgres host=citus1")
+
 	db, err := sql.Open("postgres", dbinfo)
 	bailOnError(err)
 	defer db.Close()
 
-	_, err = db.Exec("CREATE TABLE IF NOT EXISTS test ( id SERIAL PRIMARY KEY, data CHAR(36))")
+	inserts := 1000
+
+	// delete, err := db.Prepare("DELETE FROM test")
+	// bailOnError(err)
+	insert, err := db.Prepare("INSERT INTO measurement (sensorlocationid,timestamp,value) VALUES($1, $2, $3)")
+	bailOnError(err)
+	// querySingleRowByID, err := db.Prepare("SELECT * FROM test WHERE id = ($1)")
+	// bailOnError(err)
+	queryRowCount, err := db.Prepare("SELECT COUNT(*) FROM measurement")
 	bailOnError(err)
 
-	inserts := 100000
+	// timeOperation(func() {
+	// 	_, err := delete.Exec()
+	// 	bailOnError(err)
+	// }, "DELETE ALL")
 
-	delete, err := db.Prepare("DELETE FROM test")
-	bailOnError(err)
-	insert, err := db.Prepare("INSERT INTO test (data) VALUES($1)")
-	bailOnError(err)
-	querySingleRowByID, err := db.Prepare("SELECT * FROM test WHERE id = ($1)")
-	bailOnError(err)
-	queryRowCount, err := db.Prepare("SELECT COUNT(*) FROM test")
-	bailOnError(err)
-
-	timeOperation(func() {
-		_, err := delete.Exec()
-		bailOnError(err)
-	}, "DELETE ALL")
-
-	for j := 0; j < 10; j++ {
+	for j := 0; j < 10000; j++ {
 
 		timeOperation(func() {
 			for i := 0; i < inserts; i++ {
-				bailOnError(err)
-				u1 := uuid.Must(uuid.NewV4())
-				_, err := insert.Exec(u1.String())
+				_, err := insert.Exec(i, time.Now().Unix(), rand.Float64())
 				bailOnError(err)
 			}
 		}, fmt.Sprintf("INSERT %d ROWS", inserts))
 
-		timeOperation(func() {
-			_, err := querySingleRowByID.Query(12345)
-			bailOnError(err)
-		}, "QUERY SINGLE ROW BY ID")
+		// timeOperation(func() {
+		// 	_, err := querySingleRowByID.Query(12345)
+		// 	bailOnError(err)
+		// }, "QUERY SINGLE ROW BY ID")
 
 		timeOperation(func() {
 			rows, err := queryRowCount.Query()
@@ -69,10 +58,10 @@ func main() {
 			fmt.Printf("\tCOUNT=%d\n", count)
 		}, "QUERY ROW COUNT")
 	}
-	timeOperation(func() {
-		_, err := delete.Exec()
-		bailOnError(err)
-	}, "DELETE ALL")
+	// timeOperation(func() {
+	// 	_, err := delete.Exec()
+	// 	bailOnError(err)
+	// }, "DELETE ALL")
 
 	os.Exit(0)
 }
